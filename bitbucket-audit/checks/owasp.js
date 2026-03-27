@@ -10,12 +10,10 @@ const OWASP_PATTERNS = [
   "OWASP",
 ];
 
-// Kjente Jenkinsfile-navn
-const JENKINSFILE_NAMES = [
-  "Jenkinsfile",
-  "jenkinsfile",
-  "Jenkinsfile.groovy",
-];
+// Filer som regnes som Jenkins-pipeline (dekker Jenkinsfile, Jenkinsfile.atlas, Jenkinsfile.groovy osv.)
+function findJenkinsfile(fileList) {
+  return fileList.find((f) => f === "Jenkinsfile" || f.startsWith("Jenkinsfile."));
+}
 
 module.exports = {
   id: "owasp-dep-check",
@@ -27,7 +25,7 @@ module.exports = {
         `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/files?limit=100`
       );
       const list = files.values || [];
-      const jenkinsfile = list.find((f) => JENKINSFILE_NAMES.includes(f));
+      const jenkinsfile = findJenkinsfile(list);
       if (!jenkinsfile) return true; // Ingen pipeline — sjekken er ikke relevant
 
       // 2. Les innholdet i Jenkinsfile og sjekk for OWASP-mønstre
