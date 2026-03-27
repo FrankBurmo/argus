@@ -18,6 +18,8 @@ const BITBUCKET_URL = process.env.BITBUCKET_URL;
 let BITBUCKET_TOKEN = process.env.BITBUCKET_TOKEN;
 const CONCURRENCY = Math.max(1, parseInt(process.env.CONCURRENCY, 10) || 5);
 const MAX_REPOS = parseInt(process.env.MAX_REPOS, 10) || 0; // 0 = ingen grense
+// Filtrer på ett Bitbucket-prosjekt: søk i CLI-argument først, deretter miljøvariabel
+const PROJECT_KEY = (process.argv[2] || process.env.PROJECT_KEY || "").toUpperCase().trim() || null;
 
 const secret = require("./secret");
 
@@ -473,8 +475,20 @@ async function main() {
   const checks = require("./checks");
   const checkIds = checks.map((c) => c.id).join(", ");
 
-  // Hent alle prosjekter
-  const projects = await getAllPages("/rest/api/1.0/projects");
+  // Hent prosjekter — ett spesifikt eller alle
+  let projects;
+  if (PROJECT_KEY) {
+    try {
+      const proj = await request(`/rest/api/1.0/projects/${encodeURIComponent(PROJECT_KEY)}`);
+      projects = [proj];
+      console.log(`Kjører kun for prosjekt: ${proj.key} (${proj.name})`);
+    } catch (err) {
+      console.error(`Feil: Fant ikke Bitbucket-prosjekt "${PROJECT_KEY}": ${err.message}`);
+      process.exit(1);
+    }
+  } else {
+    projects = await getAllPages("/rest/api/1.0/projects");
+  }
 
   // Hent alle repos per prosjekt (sekvensielt — prosjekter er få)
   // Filtrerer bort arkiverte repos via repo.archived-feltet (standard API)
