@@ -12,6 +12,11 @@ const OWASP_PATTERNS = [
   "OWASP",
 ];
 
+// Biblioteker/funksjoner som setter opp OWASP-scan automatisk
+const IMPLICIT_OWASP_PATTERNS = [
+  "springBootMavenDeploy",
+];
+
 // Filer som regnes som Jenkins-pipeline (dekker Jenkinsfile, Jenkinsfile.atlas, Jenkinsfile.groovy osv.)
 function findJenkinsfile(fileList) {
   return fileList.find((f) => f === "Jenkinsfile" || f.startsWith("Jenkinsfile."));
@@ -34,7 +39,10 @@ module.exports = {
 
       // Bitbucket returnerer filinnhold som linjer i .lines[].text
       const text = (content.lines || []).map((l) => l.text).join("\n");
-      return OWASP_PATTERNS.some((p) => text.includes(p));
+      return (
+        OWASP_PATTERNS.some((p) => text.includes(p)) ||
+        IMPLICIT_OWASP_PATTERNS.some((p) => text.includes(p))
+      );
     } catch {
       return false;
     }
