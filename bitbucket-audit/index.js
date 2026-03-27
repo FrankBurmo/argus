@@ -138,11 +138,15 @@ function buildReport(repoResults, checks) {
   const byCheck = {};
 
   for (const chk of checks) {
-    const passed = repoResults.filter((r) => r.checks[chk.id]).length;
+    const passed       = repoResults.filter((r) => r.checks[chk.id] === true).length;
+    const failed       = repoResults.filter((r) => r.checks[chk.id] === false).length;
+    const notApplicable = repoResults.filter((r) => r.checks[chk.id] === null).length;
+    const applicable   = total - notApplicable;
     byCheck[chk.id] = {
       passed,
-      failed: total - passed,
-      coveragePercent: total ? +((passed / total) * 100).toFixed(1) : 0,
+      failed,
+      notApplicable,
+      coveragePercent: applicable ? +((passed / applicable) * 100).toFixed(1) : 0,
     };
   }
 
@@ -164,9 +168,11 @@ function buildMarkdownReport(report, checks) {
   const lines = [];
   const ts = new Date(report.generatedAt).toLocaleString("nb-NO", { timeZone: "UTC" });
 
-  // Klassifiser en vurderingstekst
+  // Klassifiser sjekk-resultat til ikon
   function assessIcon(chk, r) {
-    if (r.checks[chk.id]) return "✅";
+    const val = r.checks[chk.id];
+    if (val === true)  return "✅";
+    if (val === null)  return "➖"; // Ikke aktuelt (ingen pipeline)
     const text = r.assessments && r.assessments[chk.id];
     if (!text) return "❌";
     if (text.startsWith("Anbefalt"))       return "⚠️";
@@ -174,10 +180,10 @@ function buildMarkdownReport(report, checks) {
     return "❓"; // Usikkert / Kunne ikke vurdere
   }
 
-  // Har repoet minst én sjekk som er "Anbefalt" korrigert?
+  // Har repoet minst én sjekk som er eksplisitt feilet og anbefalt korrigert?
   function isActionable(r) {
     return checks.some((chk) => {
-      if (r.checks[chk.id]) return false;
+      if (r.checks[chk.id] !== false) return false;
       const text = r.assessments && r.assessments[chk.id];
       return text && text.startsWith("Anbefalt");
     });
@@ -189,7 +195,7 @@ function buildMarkdownReport(report, checks) {
   lines.push(`> **Repos sjekket:** ${report.summary.total}  `);
   lines.push(`> **Sjekker:** ${checks.map((c) => c.label).join(", ")}`);
   lines.push("");
-  lines.push("**Ikoner:** ✅ OK &nbsp;|&nbsp; ⚠️ Anbefalt korrigert &nbsp;|&nbsp; ➖ Ikke nødvendig &nbsp;|&nbsp; ❓ Usikkert");
+  lines.push("**Ikoner:** ✅ OK &nbsp;|&nbsp; ➖ Ikke aktuelt &nbsp;|&nbsp; ⚠️ Anbefalt korrigert &nbsp;|&nbsp; ➡️ Ikke nødvendig &nbsp;|&nbsp; ❓ Usikkert");
   lines.push("");
 
   // ── Sammendrag ──────────────────────────────────────────────
@@ -202,13 +208,14 @@ function buildMarkdownReport(report, checks) {
     lines.push("");
   }
 
-  lines.push(`| Sjekker | Bestått | Feilet | Dekning |`);
-  lines.push(`| ------- | -------:| ------:| -------:|`);
+  lines.push(`| Sjekker | Bestått | Feilet | Ikke aktuelt | Dekning (av aktuelle) |`);
+  lines.push(`| ------- | -------:| ------:| ------------:| ---------------------:|`);
   for (const chk of checks) {
     const s = report.summary.byCheck[chk.id];
     const pct = s.coveragePercent.toFixed(1);
     const icon = s.coveragePercent >= 80 ? "🟢" : s.coveragePercent >= 40 ? "🟡" : "🔴";
-    lines.push(`| ${chk.label} | ${s.passed} | ${s.failed} | ${icon} ${pct}% |`);
+    const naCell = s.notApplicable > 0 ? `➖ ${s.notApplicable}` : "—";
+    lines.push(`| ${chk.label} | ${s.passed} | ${s.failed} | ${naCell} | ${icon} ${pct}% |`);
   }
   lines.push("");
 
@@ -225,7 +232,7 @@ function buildMarkdownReport(report, checks) {
   let hasAnyFailures = false;
 
   for (const [project, repos] of Object.entries(byProject)) {
-    const failingRepos = repos.filter((r) => checks.some((chk) => !r.checks[chk.id]));
+    const failingRepos = repos.filter((r) => checks.some((chk) => r.checks[chk.id] === false));
     if (failingRepos.length === 0) continue;
     hasAnyFailures = true;
 
@@ -237,7 +244,7 @@ function buildMarkdownReport(report, checks) {
     lines.push(`### ${project}`);
     lines.push("");
     if (projectActionCount > 0) {
-      lines.push(`⚠️ **${projectActionCount} repos bør korrigeres** — ${nonActionable.length} har ingen tiltak nødvendig — ${repos.filter((r) => checks.every((chk) => r.checks[chk.id])).length} er OK`);
+      lines.push(`⚠️ **${projectActionCount} repos bør korrigeres** — ${nonActionable.length} har ingen tiltak nødvendig — ${repos.filter((r) => checks.every((chk) => r.checks[chk.id] !== false)).length} er OK/ikke-aktuelt`);
     } else {
       lines.push(`Ingen tiltak nødvendig (${nonActionable.length} repos mangler sjekker, men vurdering tilsier at de ikke trenger dem)`);
     }
@@ -256,7 +263,7 @@ function buildMarkdownReport(report, checks) {
       for (const r of actionable) {
         const checkCells = checks.map((chk) => assessIcon(chk, r)).join(" | ");
         const tiltakCells = checks
-          .filter((chk) => !r.checks[chk.id] && r.assessments && r.assessments[chk.id] && r.assessments[chk.id].startsWith("Anbefalt"))
+          .filter((chk) => r.checks[chk.id] === false && r.assessments && r.assessments[chk.id] && r.assessments[chk.id].startsWith("Anbefalt"))
           .map((chk) => `**${chk.label}:** ${r.assessments[chk.id]}`)
           .join("<br>");
         lines.push(`| \`${r.repo}\` | ${checkCells} | ${tiltakCells} |`);
@@ -280,11 +287,15 @@ function buildMarkdownReport(report, checks) {
     }
 
     // Repos uten avvik i prosjektet, kompakt
-    const okRepos = repos.filter((r) => checks.every((chk) => r.checks[chk.id]));
+    const okRepos = repos.filter((r) => checks.every((chk) => r.checks[chk.id] !== false));
     if (okRepos.length > 0) {
       lines.push(`<details><summary>✅ ${okRepos.length} repos uten avvik</summary>`);
       lines.push("");
-      for (const r of okRepos) lines.push(`- \`${r.repo}\``);
+      for (const r of okRepos) {
+        const naChecks = checks.filter((chk) => r.checks[chk.id] === null);
+        const suffix = naChecks.length > 0 ? ` — ➖ ${naChecks.map((c) => c.label).join(", ")} ikke aktuelt` : "";
+        lines.push(`- \`${r.repo}\`${suffix}`);
+      }
       lines.push("");
       lines.push("</details>");
       lines.push("");
@@ -298,7 +309,7 @@ function buildMarkdownReport(report, checks) {
 
   // ── Prosjekter uten avvik ────────────────────────────────────
   const perfectProjects = Object.entries(byProject)
-    .filter(([, repos]) => repos.every((r) => checks.every((chk) => r.checks[chk.id])))
+    .filter(([, repos]) => repos.every((r) => checks.every((chk) => r.checks[chk.id] !== false)))
     .map(([p]) => p);
 
   if (perfectProjects.length > 0) {
@@ -346,10 +357,11 @@ function printReport(report, checks) {
   for (const chk of checks) {
     const s   = report.summary.byCheck[chk.id];
     const pct = s.coveragePercent;
+    const applicable = report.summary.total - s.notApplicable;
     const filled = Math.round((pct / 100) * BAR_WIDTH);
     const bar = c.green + "█".repeat(filled) + c.reset + c.dim + "░".repeat(BAR_WIDTH - filled) + c.reset;
     const label = chk.label.padEnd(22);
-    const fraction = `${String(s.passed).padStart(4)} / ${report.summary.total}`;
+    const fraction = `${String(s.passed).padStart(4)} / ${applicable}${s.notApplicable > 0 ? ` (${c.dim}${s.notApplicable} ikke aktuell${c.reset})` : ""}`;
     const pctStr = `${pct.toFixed(1).padStart(5)}%`;
     const color = pct >= 80 ? c.green : pct >= 40 ? c.yellow : c.red;
     console.log(`  ${c.bold}${label}${c.reset} ${bar}  ${fraction}  ${color}${pctStr}${c.reset}`);
@@ -363,7 +375,7 @@ function printReport(report, checks) {
   }
 
   const projectsWithFailures = Object.entries(byProject).filter(([, repos]) =>
-    repos.some((r) => checks.some((chk) => !r.checks[chk.id]))
+    repos.some((r) => checks.some((chk) => r.checks[chk.id] === false))
   );
 
   if (projectsWithFailures.length === 0) {
@@ -375,7 +387,7 @@ function printReport(report, checks) {
   console.log(`  ${line}`);
 
   for (const [project, repos] of projectsWithFailures) {
-    const failingRepos = repos.filter((r) => checks.some((chk) => !r.checks[chk.id]));
+    const failingRepos = repos.filter((r) => checks.some((chk) => r.checks[chk.id] === false));
     const allCount  = repos.length;
     const failCount = failingRepos.length;
 
@@ -386,12 +398,16 @@ function printReport(report, checks) {
     console.log(`  ${"─".repeat(Math.min(width - 2, project.length + 30))}`);
 
     for (const r of repos) {
-      const failingChecks = checks.filter((chk) => !r.checks[chk.id]);
+      const failingChecks = checks.filter((chk) => r.checks[chk.id] === false);
       const allOk = failingChecks.length === 0;
 
       if (allOk) {
-        // Vis OK-repos dempet
-        const boxes = checks.map((chk) => `${c.green}☑ ${chk.label}${c.reset}`).join("  ");
+        // Vis OK/ikke-aktuell repos dempet
+        const boxes = checks.map((chk) =>
+          r.checks[chk.id] === null
+            ? `${c.dim}─ ${chk.label}${c.reset}`
+            : `${c.green}☑ ${chk.label}${c.reset}`
+        ).join("  ");
         console.log(`  ${c.dim}${r.repo.padEnd(30)}${c.reset}  ${boxes}`);
         continue;
       }
@@ -399,9 +415,9 @@ function printReport(report, checks) {
       // Repo med avvik
       const boxes = checks
         .map((chk) =>
-          r.checks[chk.id]
-            ? `${c.green}☑ ${chk.label}${c.reset}`
-            : `${c.red}☐ ${chk.label}${c.reset}`
+          r.checks[chk.id] === true  ? `${c.green}☑ ${chk.label}${c.reset}` :
+          r.checks[chk.id] === null  ? `${c.dim}─ ${chk.label}${c.reset}` :
+                                       `${c.red}☐ ${chk.label}${c.reset}`
         )
         .join("  ");
 
@@ -421,7 +437,7 @@ function printReport(report, checks) {
   }
 
   console.log(`\n  ${line}`);
-  const totalFailing = report.repos.filter((r) => checks.some((chk) => !r.checks[chk.id])).length;
+  const totalFailing = report.repos.filter((r) => checks.some((chk) => r.checks[chk.id] === false)).length;
   console.log(
     `  ${c.bold}Totalt:${c.reset} ${c.red}${totalFailing} repos med avvik${c.reset}` +
     ` av ${report.summary.total} sjekket.\n`
@@ -528,8 +544,8 @@ async function main() {
         result.checks[chk.id] = false;
       }
 
-      // Kjør vurdering for sjekker som feilet, dersom assess-funksjon finnes
-      if (!result.checks[chk.id] && typeof chk.assess === "function") {
+      // Kjør vurdering kun når sjekken eksplisitt feilet (false), ikke når den er ikke-aktuell (null)
+      if (result.checks[chk.id] === false && typeof chk.assess === "function") {
         try {
           result.assessments[chk.id] = await chk.assess(projectKey, repoSlug, request);
         } catch {
@@ -538,7 +554,7 @@ async function main() {
       }
     }
     done++;
-    const allPassed = checks.every((c) => result.checks[c.id]);
+    const allPassed = checks.every((c) => result.checks[c.id] !== false);
     process.stdout.write(allPassed ? "✓" : ".");
     if (done % 40 === 0 || done === total) {
       process.stdout.write(`  [${done}/${total}]\n`);

@@ -25,7 +25,7 @@ module.exports = {
       // 1. Sjekk om det finnes en Jenkinsfile
       const list = await listAllFiles(projectKey, repoSlug, request);
       const jenkinsfile = findJenkinsfile(list);
-      if (!jenkinsfile) return true; // Ingen pipeline — sjekken er ikke relevant
+      if (!jenkinsfile) return null; // Ingen pipeline — sjekken er ikke aktuell
 
       // 2. Les innholdet i Jenkinsfile og sjekk for OWASP-mønstre
       const content = await request(
