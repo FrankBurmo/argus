@@ -3,13 +3,12 @@
 ## Prosjektoversikt
 
 Argus er en Node.js CLI-app som reviderer Bitbucket Server/Data Center-repos via REST API.
-Ingen eksterne avhengigheter — kun innebygde Node.js-moduler (`https`, `http`, `fs`, `path`).
+Bruker `dotenv` for miljøvariabler og sikker OS-lagring for tokens.
 
 ## Konvensjoner
 
 - **Språk:** JavaScript (CommonJS), `"use strict"` øverst i alle filer.
 - **Runtime:** Node.js 18+. Aldri bruk `import`/`export`-syntaks — bruk `require`/`module.exports`.
-- **Ingen npm-pakker:** All funksjonalitet implementeres med innebygde moduler.
 - **Svar på norsk** i kommentarer, README og brukerrettede meldinger.
 
 ## Arkitektur

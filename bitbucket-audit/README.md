@@ -55,22 +55,24 @@ Genererer:
 
 ```
 Token hentet fra sikker lagring.
-Sjekker 142 repos (5 samtidige) med 2 sjekker(e): renovate, dockerfile
+Sjekker 142 repos (5 samtidige) med 2 sjekker(e): renovate, owasp-dep-check
 ✓✓.✓..✓  [142/142]
 
-========== RAPPORT ==========
+════════════════════════════════════════════════════════════
+              ARGUS — BITBUCKET REVISJONSRAPPORT
+════════════════════════════════════════════════════════════
 
-Renovate Bot           37 / 142  (26.1%)
-Dockerfile             89 / 142  (62.7%)
+Renovate Bot           37 / 142     26.1%
+OWASP Dependency-Check 89 / 142     62.7%
 
 --- Repos med mangler og vurdering ---
 
   PLATTFORM/atlas-worker
-    ✗ Dockerfile: Anbefalt — ser ut som kjørbar app (fant package.json).
+    ✗ OWASP Dependency-Check: Anbefalt — har Jenkinsfile og avhengigheter (package.json), men OWASP Dependency-Check mangler i pipeline.
     ✗ Renovate Bot: Anbefalt — har avhengighetsfiler (package.json) uten automatisk oppdatering.
 
   PLATTFORM/docs-site
-    ✗ Dockerfile: Ikke nødvendig — repoet ser ut som dokumentasjon/konfig.
+    ✗ OWASP Dependency-Check: Ikke nødvendig — ingen Jenkins-pipeline eller avhengighetsfiler.
     ✗ Renovate Bot: Ikke nødvendig — fant ingen avhengighetsfiler.
 ```
 
@@ -120,7 +122,7 @@ module.exports = {
 ```javascript
 module.exports = [
   require("./renovate"),
-  require("./dockerfile"),
+  require("./owasp"),
   require("./minsjekker"),   // <-- ny linje
 ];
 ```
@@ -129,10 +131,10 @@ Det er alt. Resten av systemet plukker opp sjekken automatisk.
 
 ## Innebygde sjekker
 
-| ID          | Beskrivelse                                               |
-| ----------- | --------------------------------------------------------- |
-| `renovate`  | Sjekker om repoet har Renovate Bot-konfigurasjon          |
-| `dockerfile`| Sjekker om repoet har en `Dockerfile`                     |
+| ID                 | Beskrivelse                                                                 |
+| ------------------ | --------------------------------------------------------------------------- |
+| `renovate`         | Sjekker om repoet har Renovate Bot-konfigurasjon                            |
+| `owasp-dep-check`  | Sjekker om Jenkinsfile inneholder OWASP Dependency-Check (SCA-scanning)     |
 
 ## Rapportformat
 
@@ -141,21 +143,21 @@ Rapporten skrives til `audit-report.json` med følgende struktur:
 ```json
 {
   "generatedAt": "2025-01-15T10:30:00.000Z",
-  "checks": ["renovate", "dockerfile"],
+  "checks": ["renovate", "owasp-dep-check"],
   "summary": {
     "total": 142,
     "byCheck": {
-      "renovate":   { "passed": 37, "failed": 105, "coveragePercent": 26.1 },
-      "dockerfile": { "passed": 89, "failed": 53,  "coveragePercent": 62.7 }
+      "renovate":        { "passed": 37, "failed": 105, "coveragePercent": 26.1 },
+      "owasp-dep-check": { "passed": 89, "failed": 53,  "coveragePercent": 62.7 }
     }
   },
   "repos": [
     {
       "project": "PLATTFORM",
       "repo": "atlas-api",
-      "checks": { "renovate": true, "dockerfile": false },
+      "checks": { "renovate": true, "owasp-dep-check": false },
       "assessments": {
-        "dockerfile": "Anbefalt — ser ut som kjørbar app (fant package.json)."
+        "owasp-dep-check": "Anbefalt — har Jenkinsfile og avhengigheter (package.json), men OWASP Dependency-Check mangler i pipeline."
       }
     }
   ]

@@ -164,16 +164,44 @@ function buildMarkdownReport(report, checks) {
   const lines = [];
   const ts = new Date(report.generatedAt).toLocaleString("nb-NO", { timeZone: "UTC" });
 
+  // Klassifiser en vurderingstekst
+  function assessIcon(chk, r) {
+    if (r.checks[chk.id]) return "✅";
+    const text = r.assessments && r.assessments[chk.id];
+    if (!text) return "❌";
+    if (text.startsWith("Anbefalt"))       return "⚠️";
+    if (text.startsWith("Ikke nødvendig")) return "➖";
+    return "❓"; // Usikkert / Kunne ikke vurdere
+  }
+
+  // Har repoet minst én sjekk som er "Anbefalt" korrigert?
+  function isActionable(r) {
+    return checks.some((chk) => {
+      if (r.checks[chk.id]) return false;
+      const text = r.assessments && r.assessments[chk.id];
+      return text && text.startsWith("Anbefalt");
+    });
+  }
+
   lines.push("# Argus — Bitbucket Revisjonsrapport");
   lines.push("");
   lines.push(`> **Generert:** ${ts} UTC  `);
   lines.push(`> **Repos sjekket:** ${report.summary.total}  `);
   lines.push(`> **Sjekker:** ${checks.map((c) => c.label).join(", ")}`);
   lines.push("");
+  lines.push("**Ikoner:** ✅ OK &nbsp;|&nbsp; ⚠️ Anbefalt korrigert &nbsp;|&nbsp; ➖ Ikke nødvendig &nbsp;|&nbsp; ❓ Usikkert");
+  lines.push("");
 
   // ── Sammendrag ──────────────────────────────────────────────
   lines.push("## Sammendrag");
   lines.push("");
+
+  const actionableCount = report.repos.filter(isActionable).length;
+  if (actionableCount > 0) {
+    lines.push(`> ⚠️ **${actionableCount} av ${report.summary.total} repos har tiltak som anbefales gjennomført.**`);
+    lines.push("");
+  }
+
   lines.push(`| Sjekker | Bestått | Feilet | Dekning |`);
   lines.push(`| ------- | -------:| ------:| -------:|`);
   for (const chk of checks) {
@@ -201,33 +229,60 @@ function buildMarkdownReport(report, checks) {
     if (failingRepos.length === 0) continue;
     hasAnyFailures = true;
 
+    // Del opp i "bør korrigeres" og "ingen tiltak nødvendig"
+    const actionable    = failingRepos.filter(isActionable);
+    const nonActionable = failingRepos.filter((r) => !isActionable(r));
+
+    const projectActionCount = actionable.length;
     lines.push(`### ${project}`);
     lines.push("");
-    lines.push(`${failingRepos.length} av ${repos.length} repos har avvik.`);
-    lines.push("");
-
-    // Tabellhode
-    const checkHeaders = checks.map((c) => c.label).join(" | ");
-    const checkDivider = checks.map(() => ":---:").join(" | ");
-    lines.push(`| Repo | ${checkHeaders} | Vurderinger |`);
-    lines.push(`| ---- | ${checkDivider} | ----------- |`);
-
-    for (const r of failingRepos) {
-      const checkCells = checks
-        .map((chk) => (r.checks[chk.id] ? "✅" : "❌"))
-        .join(" | ");
-      const assessments = checks
-        .filter((chk) => !r.checks[chk.id] && r.assessments && r.assessments[chk.id])
-        .map((chk) => `**${chk.label}:** ${r.assessments[chk.id]}`)
-        .join("<br>");
-      lines.push(`| \`${r.repo}\` | ${checkCells} | ${assessments} |`);
+    if (projectActionCount > 0) {
+      lines.push(`⚠️ **${projectActionCount} repos bør korrigeres** — ${nonActionable.length} har ingen tiltak nødvendig — ${repos.filter((r) => checks.every((chk) => r.checks[chk.id])).length} er OK`);
+    } else {
+      lines.push(`Ingen tiltak nødvendig (${nonActionable.length} repos mangler sjekker, men vurdering tilsier at de ikke trenger dem)`);
     }
     lines.push("");
+
+    const checkHeaders = checks.map((c) => c.label).join(" | ");
+    const checkDivider = checks.map(() => ":---:").join(" | ");
+
+    // ── Repos som bør korrigeres ─────────────────────────────
+    if (actionable.length > 0) {
+      lines.push(`#### ⚠️ Bør korrigeres`);
+      lines.push("");
+      lines.push(`| Repo | ${checkHeaders} | Tiltak |`);
+      lines.push(`| ---- | ${checkDivider} | ------ |`);
+
+      for (const r of actionable) {
+        const checkCells = checks.map((chk) => assessIcon(chk, r)).join(" | ");
+        const tiltakCells = checks
+          .filter((chk) => !r.checks[chk.id] && r.assessments && r.assessments[chk.id] && r.assessments[chk.id].startsWith("Anbefalt"))
+          .map((chk) => `**${chk.label}:** ${r.assessments[chk.id]}`)
+          .join("<br>");
+        lines.push(`| \`${r.repo}\` | ${checkCells} | ${tiltakCells} |`);
+      }
+      lines.push("");
+    }
+
+    // ── Repos uten nødvendige tiltak ─────────────────────────
+    if (nonActionable.length > 0) {
+      lines.push(`<details><summary>➖ ${nonActionable.length} repos uten nødvendige tiltak</summary>`);
+      lines.push("");
+      lines.push(`| Repo | ${checkHeaders} |`);
+      lines.push(`| ---- | ${checkDivider} |`);
+      for (const r of nonActionable) {
+        const checkCells = checks.map((chk) => assessIcon(chk, r)).join(" | ");
+        lines.push(`| \`${r.repo}\` | ${checkCells} |`);
+      }
+      lines.push("");
+      lines.push("</details>");
+      lines.push("");
+    }
 
     // Repos uten avvik i prosjektet, kompakt
     const okRepos = repos.filter((r) => checks.every((chk) => r.checks[chk.id]));
     if (okRepos.length > 0) {
-      lines.push(`<details><summary>${okRepos.length} repos uten avvik</summary>`);
+      lines.push(`<details><summary>✅ ${okRepos.length} repos uten avvik</summary>`);
       lines.push("");
       for (const r of okRepos) lines.push(`- \`${r.repo}\``);
       lines.push("");

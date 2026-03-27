@@ -2,7 +2,7 @@
 
 module.exports = [
   require("./renovate"),
-  require("./dockerfile"),
+  require("./owasp"),
   // Legg til flere sjekkere her:
   // require("./minsjekker"),
 ];
