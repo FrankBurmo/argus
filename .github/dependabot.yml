@@ -10,3 +10,14 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "ci"
+
+  - package-ecosystem: "npm"
+    directory: "/bitbucket-audit"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore"
