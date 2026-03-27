@@ -460,17 +460,39 @@ async function main() {
   // Hent alle prosjekter
   const projects = await getAllPages("/rest/api/1.0/projects");
 
+  // Hent arkiverte repos for å ekskludere dem (Bitbucket archive-API)
+  const archivedSlugs = new Set();
+  try {
+    const archived = await getAllPages("/rest/archive/1.0/repos?limit=1000");
+    for (const r of archived) {
+      if (r.project && r.slug) {
+        archivedSlugs.add(`${r.project.key}/${r.slug}`);
+      }
+    }
+  } catch {
+    // Archive-API er ikke tilgjengelig på alle versjoner — ignorer stille
+  }
+
   // Hent alle repos per prosjekt (sekvensielt — prosjekter er få)
   let allRepos = [];
+  let archivedFiltered = 0;
   for (const proj of projects) {
     const repos = await getAllPages(
       `/rest/api/1.0/projects/${encodeURIComponent(proj.key)}/repos`
     );
     for (const repo of repos) {
       if (repo.state === "AVAILABLE") {
-        allRepos.push({ projectKey: proj.key, repoSlug: repo.slug });
+        if (archivedSlugs.has(`${proj.key}/${repo.slug}`)) {
+          archivedFiltered++;
+        } else {
+          allRepos.push({ projectKey: proj.key, repoSlug: repo.slug });
+        }
       }
     }
+  }
+
+  if (archivedFiltered > 0) {
+    console.log(`Filtrerte bort ${archivedFiltered} arkiverte repos.`);
   }
 
   // Sorter for stabil utskrift
