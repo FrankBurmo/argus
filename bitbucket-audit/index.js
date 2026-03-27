@@ -11,20 +11,22 @@ const { URL } = require("url");
 // 1. Konfigurasjon
 // ---------------------------------------------------------------------------
 
+// Last inn .env fra arbeidsmappen (overstyrer IKKE allerede satte variabler)
+require("dotenv").config({ path: path.join(process.cwd(), ".env") });
+
 const BITBUCKET_URL = process.env.BITBUCKET_URL;
-const BITBUCKET_TOKEN = process.env.BITBUCKET_TOKEN;
+let BITBUCKET_TOKEN = process.env.BITBUCKET_TOKEN;
 const CONCURRENCY = Math.max(1, parseInt(process.env.CONCURRENCY, 10) || 5);
+const MAX_REPOS = parseInt(process.env.MAX_REPOS, 10) || 0; // 0 = ingen grense
+
+const secret = require("./secret");
 
 function validateEnv() {
-  const missing = [];
-  if (!BITBUCKET_URL) missing.push("BITBUCKET_URL");
-  if (!BITBUCKET_TOKEN) missing.push("BITBUCKET_TOKEN");
-  if (missing.length) {
+  if (!BITBUCKET_URL) {
     console.error(
-      `Feil: Manglende miljøvariabler: ${missing.join(", ")}\n` +
-        "Sett dem før du kjører:\n" +
-        "  export BITBUCKET_URL=https://bitbucket.eksempel.no\n" +
-        "  export BITBUCKET_TOKEN=ditt-token"
+      "Feil: Manglende miljøvariabel: BITBUCKET_URL\n" +
+        "Sett den før du kjører:\n" +
+        "  export BITBUCKET_URL=https://bitbucket.eksempel.no"
     );
     process.exit(1);
   }
@@ -158,33 +160,217 @@ function buildReport(repoResults, checks) {
   };
 }
 
-function printReport(report, checks) {
-  console.log("\n========== RAPPORT ==========\n");
+function buildMarkdownReport(report, checks) {
+  const lines = [];
+  const ts = new Date(report.generatedAt).toLocaleString("nb-NO", { timeZone: "UTC" });
 
+  lines.push("# Argus — Bitbucket Revisjonsrapport");
+  lines.push("");
+  lines.push(`> **Generert:** ${ts} UTC  `);
+  lines.push(`> **Repos sjekket:** ${report.summary.total}  `);
+  lines.push(`> **Sjekker:** ${checks.map((c) => c.label).join(", ")}`);
+  lines.push("");
+
+  // ── Sammendrag ──────────────────────────────────────────────
+  lines.push("## Sammendrag");
+  lines.push("");
+  lines.push(`| Sjekker | Bestått | Feilet | Dekning |`);
+  lines.push(`| ------- | -------:| ------:| -------:|`);
   for (const chk of checks) {
     const s = report.summary.byCheck[chk.id];
     const pct = s.coveragePercent.toFixed(1);
-    const label = chk.label.padEnd(20);
-    console.log(`${label} ${String(s.passed).padStart(4)} / ${report.summary.total}  (${pct}%)`);
+    const icon = s.coveragePercent >= 80 ? "🟢" : s.coveragePercent >= 40 ? "🟡" : "🔴";
+    lines.push(`| ${chk.label} | ${s.passed} | ${s.failed} | ${icon} ${pct}% |`);
+  }
+  lines.push("");
+
+  // ── Gruppert per prosjekt ────────────────────────────────────
+  lines.push("## Avvik per prosjekt");
+  lines.push("");
+
+  const byProject = {};
+  for (const r of report.repos) {
+    if (!byProject[r.project]) byProject[r.project] = [];
+    byProject[r.project].push(r);
   }
 
-  // Repos med mangler og vurderinger
-  const reposWithFailures = report.repos.filter((r) =>
-    checks.some((c) => !r.checks[c.id])
+  let hasAnyFailures = false;
+
+  for (const [project, repos] of Object.entries(byProject)) {
+    const failingRepos = repos.filter((r) => checks.some((chk) => !r.checks[chk.id]));
+    if (failingRepos.length === 0) continue;
+    hasAnyFailures = true;
+
+    lines.push(`### ${project}`);
+    lines.push("");
+    lines.push(`${failingRepos.length} av ${repos.length} repos har avvik.`);
+    lines.push("");
+
+    // Tabellhode
+    const checkHeaders = checks.map((c) => c.label).join(" | ");
+    const checkDivider = checks.map(() => ":---:").join(" | ");
+    lines.push(`| Repo | ${checkHeaders} | Vurderinger |`);
+    lines.push(`| ---- | ${checkDivider} | ----------- |`);
+
+    for (const r of failingRepos) {
+      const checkCells = checks
+        .map((chk) => (r.checks[chk.id] ? "✅" : "❌"))
+        .join(" | ");
+      const assessments = checks
+        .filter((chk) => !r.checks[chk.id] && r.assessments && r.assessments[chk.id])
+        .map((chk) => `**${chk.label}:** ${r.assessments[chk.id]}`)
+        .join("<br>");
+      lines.push(`| \`${r.repo}\` | ${checkCells} | ${assessments} |`);
+    }
+    lines.push("");
+
+    // Repos uten avvik i prosjektet, kompakt
+    const okRepos = repos.filter((r) => checks.every((chk) => r.checks[chk.id]));
+    if (okRepos.length > 0) {
+      lines.push(`<details><summary>${okRepos.length} repos uten avvik</summary>`);
+      lines.push("");
+      for (const r of okRepos) lines.push(`- \`${r.repo}\``);
+      lines.push("");
+      lines.push("</details>");
+      lines.push("");
+    }
+  }
+
+  if (!hasAnyFailures) {
+    lines.push("✅ Alle repos passerer alle sjekker.");
+    lines.push("");
+  }
+
+  // ── Prosjekter uten avvik ────────────────────────────────────
+  const perfectProjects = Object.entries(byProject)
+    .filter(([, repos]) => repos.every((r) => checks.every((chk) => r.checks[chk.id])))
+    .map(([p]) => p);
+
+  if (perfectProjects.length > 0) {
+    lines.push("## Prosjekter uten avvik");
+    lines.push("");
+    for (const p of perfectProjects) lines.push(`- **${p}**`);
+    lines.push("");
+  }
+
+  lines.push("---");
+  lines.push(`*Rapport generert av [Argus](https://github.com/your-org/argus)*`);
+  lines.push("");
+
+  return lines.join("\n");
+}
+
+function printReport(report, checks) {
+  // ANSI-farger
+  const c = {
+    reset:  "\x1b[0m",
+    bold:   "\x1b[1m",
+    dim:    "\x1b[2m",
+    red:    "\x1b[31m",
+    green:  "\x1b[32m",
+    yellow: "\x1b[33m",
+    cyan:   "\x1b[36m",
+    white:  "\x1b[37m",
+    bgRed:  "\x1b[41m",
+  };
+
+  const width = 60;
+  const line  = "─".repeat(width);
+
+  // ── Topptekst ──────────────────────────────────────────────
+  console.log(`\n${c.bold}${c.cyan}${"═".repeat(width)}${c.reset}`);
+  const title = "ARGUS — BITBUCKET REVISJONSRAPPORT";
+  const pad   = Math.floor((width - title.length) / 2);
+  console.log(`${c.bold}${c.cyan}${" ".repeat(pad)}${title}${c.reset}`);
+  console.log(`${c.bold}${c.cyan}${"═".repeat(width)}${c.reset}`);
+  console.log(`${c.dim}  Generert : ${report.generatedAt}${c.reset}`);
+  console.log(`${c.dim}  Repos    : ${report.summary.total}  |  Sjekker: ${checks.map(c => c.label).join(", ")}${c.reset}\n`);
+
+  // ── Sammendragstabell ───────────────────────────────────────
+  const BAR_WIDTH = 20;
+  for (const chk of checks) {
+    const s   = report.summary.byCheck[chk.id];
+    const pct = s.coveragePercent;
+    const filled = Math.round((pct / 100) * BAR_WIDTH);
+    const bar = c.green + "█".repeat(filled) + c.reset + c.dim + "░".repeat(BAR_WIDTH - filled) + c.reset;
+    const label = chk.label.padEnd(22);
+    const fraction = `${String(s.passed).padStart(4)} / ${report.summary.total}`;
+    const pctStr = `${pct.toFixed(1).padStart(5)}%`;
+    const color = pct >= 80 ? c.green : pct >= 40 ? c.yellow : c.red;
+    console.log(`  ${c.bold}${label}${c.reset} ${bar}  ${fraction}  ${color}${pctStr}${c.reset}`);
+  }
+
+  // ── Gruppert per prosjekt ───────────────────────────────────
+  const byProject = {};
+  for (const r of report.repos) {
+    if (!byProject[r.project]) byProject[r.project] = [];
+    byProject[r.project].push(r);
+  }
+
+  const projectsWithFailures = Object.entries(byProject).filter(([, repos]) =>
+    repos.some((r) => checks.some((chk) => !r.checks[chk.id]))
   );
-  if (reposWithFailures.length) {
-    console.log("\n--- Repos med mangler og vurdering ---");
-    for (const r of reposWithFailures) {
-      const failing = checks.filter((c) => !r.checks[c.id]);
-      console.log(`\n  ${r.project}/${r.repo}`);
-      for (const chk of failing) {
+
+  if (projectsWithFailures.length === 0) {
+    console.log(`\n  ${c.green}${c.bold}Alle repos passerer alle sjekker. ✓${c.reset}\n`);
+    return;
+  }
+
+  console.log(`\n${c.bold}  PROSJEKTER MED AVVIK${c.reset}`);
+  console.log(`  ${line}`);
+
+  for (const [project, repos] of projectsWithFailures) {
+    const failingRepos = repos.filter((r) => checks.some((chk) => !r.checks[chk.id]));
+    const allCount  = repos.length;
+    const failCount = failingRepos.length;
+
+    console.log(
+      `\n  ${c.bold}${c.cyan}${project}${c.reset}` +
+      `  ${c.dim}(${allCount} repos, ${c.reset}${c.red}${failCount} med avvik${c.reset}${c.dim})${c.reset}`
+    );
+    console.log(`  ${"─".repeat(Math.min(width - 2, project.length + 30))}`);
+
+    for (const r of repos) {
+      const failingChecks = checks.filter((chk) => !r.checks[chk.id]);
+      const allOk = failingChecks.length === 0;
+
+      if (allOk) {
+        // Vis OK-repos dempet
+        const boxes = checks.map((chk) => `${c.green}☑ ${chk.label}${c.reset}`).join("  ");
+        console.log(`  ${c.dim}${r.repo.padEnd(30)}${c.reset}  ${boxes}`);
+        continue;
+      }
+
+      // Repo med avvik
+      const boxes = checks
+        .map((chk) =>
+          r.checks[chk.id]
+            ? `${c.green}☑ ${chk.label}${c.reset}`
+            : `${c.red}☐ ${chk.label}${c.reset}`
+        )
+        .join("  ");
+
+      const repoLabel = `${c.bold}${r.repo}${c.reset}`;
+      console.log(`  ${repoLabel.padEnd(30 + c.bold.length + c.reset.length)}  ${boxes}`);
+
+      for (const chk of failingChecks) {
         const assessment = (r.assessments && r.assessments[chk.id]) || "Ingen vurdering";
-        console.log(`    ✗ ${chk.label}: ${assessment}`);
+        // Fargelegg vurdering basert på innhold
+        let assessColor = c.dim;
+        if (assessment.startsWith("Anbefalt")) assessColor = c.yellow;
+        else if (assessment.startsWith("Ikke nødvendig")) assessColor = c.dim;
+        else if (assessment.startsWith("Usikkert")) assessColor = c.dim;
+        console.log(`    ${c.dim}└─${c.reset} ${c.dim}${chk.label}:${c.reset} ${assessColor}${assessment}${c.reset}`);
       }
     }
   }
 
-  console.log("");
+  console.log(`\n  ${line}`);
+  const totalFailing = report.repos.filter((r) => checks.some((chk) => !r.checks[chk.id])).length;
+  console.log(
+    `  ${c.bold}Totalt:${c.reset} ${c.red}${totalFailing} repos med avvik${c.reset}` +
+    ` av ${report.summary.total} sjekket.\n`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -193,6 +379,24 @@ function printReport(report, checks) {
 
 async function main() {
   validateEnv();
+
+  // Hent token: miljøvariabel → sikker lagring → spør bruker
+  if (!BITBUCKET_TOKEN) {
+    BITBUCKET_TOKEN = secret.getToken();
+    if (BITBUCKET_TOKEN) {
+      console.log("Token hentet fra sikker lagring.");
+    }
+  }
+  if (!BITBUCKET_TOKEN) {
+    console.log("Fant ikke Bitbucket-token i miljøvariabler eller sikker lagring.");
+    BITBUCKET_TOKEN = await secret.promptForToken();
+    if (!BITBUCKET_TOKEN) {
+      console.error("Feil: Ingen token oppgitt.");
+      process.exit(1);
+    }
+    secret.setToken(BITBUCKET_TOKEN);
+    console.log("Token lagret i sikker lagring.\n");
+  }
 
   // Last inn sjekkere
   const checks = require("./checks");
@@ -220,6 +424,12 @@ async function main() {
       `${b.projectKey}/${b.repoSlug}`
     )
   );
+
+  // Begrens antall repos hvis MAX_REPOS er satt
+  if (MAX_REPOS > 0 && allRepos.length > MAX_REPOS) {
+    console.log(`MAX_REPOS=${MAX_REPOS}: begrenser til ${MAX_REPOS} av ${allRepos.length} repos.`);
+    allRepos = allRepos.slice(0, MAX_REPOS);
+  }
 
   const total = allRepos.length;
   console.log(
@@ -259,9 +469,19 @@ async function main() {
   // Bygg og skriv rapport
   const report = buildReport(repoResults, checks);
 
-  const outPath = path.join(process.cwd(), "audit-report.json");
-  fs.writeFileSync(outPath, JSON.stringify(report, null, 2), "utf8");
-  console.log(`\nRapport skrevet til ${outPath}`);
+  const reportsDir = path.join(process.cwd(), "reports");
+  if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const jsonPath = path.join(reportsDir, `audit-${timestamp}.json`);
+  const mdPath   = path.join(reportsDir, `audit-${timestamp}.md`);
+
+  fs.writeFileSync(jsonPath, JSON.stringify(report, null, 2), "utf8");
+  fs.writeFileSync(mdPath, buildMarkdownReport(report, checks), "utf8");
+
+  console.log(`\nRapporter skrevet til:`);
+  console.log(`  JSON : ${jsonPath}`);
+  console.log(`  MD   : ${mdPath}`);
 
   printReport(report, checks);
 }

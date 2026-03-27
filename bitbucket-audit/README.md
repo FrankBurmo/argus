@@ -1,37 +1,60 @@
 # Bitbucket Audit
 
-CLI-verktøy som kobler til en Bitbucket Server/Data Center-instans via REST API, itererer gjennom alle tilgjengelige repos, kjører et sett med konfigurerbare sjekker, og produserer en revisjon-rapport.
+CLI-verktøy som kobler til en Bitbucket Server/Data Center-instans via REST API, itererer gjennom alle tilgjengelige repos, kjører et sett med konfigurerbare sjekker, og produserer en revisjonsrapport — inkludert vurderinger for repos som mangler en eller flere sjekker.
 
-**Ingen eksterne avhengigheter** — kun innebygde Node.js-moduler.
+## Installasjon
+
+```bash
+cd bitbucket-audit
+npm install
+```
 
 ## Oppsett
 
+Kopier eksempelfilen og fyll inn din Bitbucket-URL:
+
 ```bash
-export BITBUCKET_URL=https://bitbucket.eksempel.no
-export BITBUCKET_TOKEN=ditt-token
-export CONCURRENCY=5   # valgfri, default 5
+cp .env.example .env
 ```
 
-| Variabel          | Påkrevd | Beskrivelse                                              |
-| ----------------- | ------- | -------------------------------------------------------- |
-| `BITBUCKET_URL`   | Ja      | Base-URL til Bitbucket Server/Data Center                |
-| `BITBUCKET_TOKEN` | Ja      | Personal Access Token med `PROJECT_READ` / `REPO_READ`   |
-| `CONCURRENCY`     | Nei     | Antall samtidige repo-sjekker (default `5`)              |
+Rediger `.env`:
+
+```dotenv
+BITBUCKET_URL=https://bitbucket.eksempel.no
+CONCURRENCY=5   # valgfri, default 5
+```
+
+**Token-håndtering** — `BITBUCKET_TOKEN` trenger du *ikke* i `.env`-filen.
+Ved første kjøring vil verktøyet spørre deg om tokenet ditt og lagre det sikkert:
+
+- **Windows**: kryptert med DPAPI (`~/.argus/token.enc`)
+- **macOS**: Keychain
+- **Linux**: freedesktop Secret Service (`secret-tool`)
+
+Etter første kjøring hentes tokenet automatisk. Du kan fortsatt overstyre ved å sette `BITBUCKET_TOKEN` som miljøvariabel eller i `.env`.
+
+| Variabel          | Kilde           | Beskrivelse                                            |
+| ----------------- | --------------- | ------------------------------------------------------ |
+| `BITBUCKET_URL`   | `.env` / shell  | Base-URL til Bitbucket Server/Data Center (**påkrevd**)|
+| `BITBUCKET_TOKEN` | Sikker lagring  | Personal Access Token med `PROJECT_READ`/`REPO_READ`   |
+| `CONCURRENCY`     | `.env` / shell  | Antall samtidige repo-sjekker (default `5`)            |
+| `MAX_REPOS`       | `.env` / shell  | Maks antall repos å sjekke, sortert alfabetisk (default `0` = ingen grense) |
 
 ## Kjør
 
 ```bash
-node bitbucket-audit/index.js
+node index.js
 ```
 
 Genererer:
 - Fremdriftsvisning i terminalen
-- Oppsummeringsrapport i konsollen
+- Oppsummeringsrapport med vurderinger i konsollen
 - `audit-report.json` i gjeldende mappe
 
 ## Eksempel på utskrift
 
 ```
+Token hentet fra sikker lagring.
 Sjekker 142 repos (5 samtidige) med 2 sjekker(e): renovate, dockerfile
 ✓✓.✓..✓  [142/142]
 
@@ -40,9 +63,15 @@ Sjekker 142 repos (5 samtidige) med 2 sjekker(e): renovate, dockerfile
 Renovate Bot           37 / 142  (26.1%)
 Dockerfile             89 / 142  (62.7%)
 
---- Mangler alle ---
+--- Repos med mangler og vurdering ---
+
   PLATTFORM/atlas-worker
-  ...
+    ✗ Dockerfile: Anbefalt — ser ut som kjørbar app (fant package.json).
+    ✗ Renovate Bot: Anbefalt — har avhengighetsfiler (package.json) uten automatisk oppdatering.
+
+  PLATTFORM/docs-site
+    ✗ Dockerfile: Ikke nødvendig — repoet ser ut som dokumentasjon/konfig.
+    ✗ Renovate Bot: Ikke nødvendig — fant ingen avhengighetsfiler.
 ```
 
 ## Arkitektur
@@ -62,18 +91,27 @@ Appen er delt i fire lag:
 module.exports = {
   id: "minsjekker",           // maskinlesbar nøkkel, brukes i rapport
   label: "Min Sjekker",       // menneskelesbar visningstittel
+
   run: async (projectKey, repoSlug, request) => {
     try {
-      // Bruk request() for å hente data fra Bitbucket API
       const data = await request(
         `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/files?limit=100`
       );
-      // Returner true/false basert på sjekken
       return (data.values || []).some(f => f === "minfil.txt");
     } catch {
       return false;
     }
-  }
+  },
+
+  // Valgfri: kjøres kun når run() returnerer false
+  assess: async (projectKey, repoSlug, request) => {
+    try {
+      // Hent informasjon og returner en kort vurderingstekst
+      return "Anbefalt — repoet bør ha minfil.txt.";
+    } catch {
+      return "Kunne ikke vurdere.";
+    }
+  },
 };
 ```
 
@@ -115,7 +153,10 @@ Rapporten skrives til `audit-report.json` med følgende struktur:
     {
       "project": "PLATTFORM",
       "repo": "atlas-api",
-      "checks": { "renovate": true, "dockerfile": false }
+      "checks": { "renovate": true, "dockerfile": false },
+      "assessments": {
+        "dockerfile": "Anbefalt — ser ut som kjørbar app (fant package.json)."
+      }
     }
   ]
 }
@@ -126,3 +167,4 @@ Rapporten skrives til `audit-report.json` med følgende struktur:
 - Node.js 18+
 - Bitbucket Server/Data Center med REST API v1.0
 - PAT med `PROJECT_READ` og `REPO_READ`-tilganger
+- **Linux**: `secret-tool` (`sudo apt install libsecret-tools`) for sikker token-lagring
