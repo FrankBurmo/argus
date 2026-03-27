@@ -168,14 +168,19 @@ function printReport(report, checks) {
     console.log(`${label} ${String(s.passed).padStart(4)} / ${report.summary.total}  (${pct}%)`);
   }
 
-  // Repos som mangler ALLE sjekker
-  const failAll = report.repos.filter((r) =>
-    checks.every((c) => !r.checks[c.id])
+  // Repos med mangler og vurderinger
+  const reposWithFailures = report.repos.filter((r) =>
+    checks.some((c) => !r.checks[c.id])
   );
-  if (failAll.length) {
-    console.log("\n--- Mangler alle ---");
-    for (const r of failAll) {
-      console.log(`  ${r.project}/${r.repo}`);
+  if (reposWithFailures.length) {
+    console.log("\n--- Repos med mangler og vurdering ---");
+    for (const r of reposWithFailures) {
+      const failing = checks.filter((c) => !r.checks[c.id]);
+      console.log(`\n  ${r.project}/${r.repo}`);
+      for (const chk of failing) {
+        const assessment = (r.assessments && r.assessments[chk.id]) || "Ingen vurdering";
+        console.log(`    ✗ ${chk.label}: ${assessment}`);
+      }
     }
   }
 
@@ -225,12 +230,21 @@ async function main() {
 
   // Kjør sjekkere parallelt via pool, sjekkere sekvensielt per repo
   const repoResults = await pooledMap(allRepos, async ({ projectKey, repoSlug }) => {
-    const result = { project: projectKey, repo: repoSlug, checks: {} };
+    const result = { project: projectKey, repo: repoSlug, checks: {}, assessments: {} };
     for (const chk of checks) {
       try {
         result.checks[chk.id] = await chk.run(projectKey, repoSlug, request);
       } catch {
         result.checks[chk.id] = false;
+      }
+
+      // Kjør vurdering for sjekker som feilet, dersom assess-funksjon finnes
+      if (!result.checks[chk.id] && typeof chk.assess === "function") {
+        try {
+          result.assessments[chk.id] = await chk.assess(projectKey, repoSlug, request);
+        } catch {
+          result.assessments[chk.id] = "Kunne ikke vurdere.";
+        }
       }
     }
     done++;
