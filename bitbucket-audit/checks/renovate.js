@@ -1,5 +1,7 @@
 "use strict";
 
+const { listAllFiles } = require("./utils");
+
 // Filer som indikerer avhengigheter som bør vedlikeholdes
 const DEPENDENCY_FILES = [
   "package.json",
@@ -33,10 +35,8 @@ module.exports = {
   label: "Renovate Bot",
   run: async (projectKey, repoSlug, request) => {
     try {
-      const files = await request(
-        `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/files?limit=100`
-      );
-      return (files.values || []).some((f) =>
+      const list = await listAllFiles(projectKey, repoSlug, request);
+      return list.some((f) =>
         [
           "renovate.json",
           "renovate.json5",
@@ -55,10 +55,7 @@ module.exports = {
    */
   assess: async (projectKey, repoSlug, request) => {
     try {
-      const files = await request(
-        `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/files?limit=100`
-      );
-      const list = files.values || [];
+      const list = await listAllFiles(projectKey, repoSlug, request);
 
       const hasAltTool = list.some((f) =>
         ALT_DEPENDENCY_TOOLS.some((alt) => f === alt || f.endsWith("/" + alt))

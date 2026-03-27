@@ -1,5 +1,7 @@
 "use strict";
 
+const { listAllFiles } = require("./utils");
+
 // Mønstre som indikerer bruk av OWASP Dependency-Check i en pipeline
 const OWASP_PATTERNS = [
   "performDependencyCheck",
@@ -21,10 +23,7 @@ module.exports = {
   run: async (projectKey, repoSlug, request) => {
     try {
       // 1. Sjekk om det finnes en Jenkinsfile
-      const files = await request(
-        `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/files?limit=100`
-      );
-      const list = files.values || [];
+      const list = await listAllFiles(projectKey, repoSlug, request);
       const jenkinsfile = findJenkinsfile(list);
       if (!jenkinsfile) return true; // Ingen pipeline — sjekken er ikke relevant
 
@@ -49,10 +48,7 @@ module.exports = {
     try {
       // assess kalles kun når run() returnerer false,
       // dvs. repoet har Jenkinsfile men OWASP-sjekk mangler.
-      const files = await request(
-        `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/files?limit=100`
-      );
-      const list = files.values || [];
+      const list = await listAllFiles(projectKey, repoSlug, request);
 
       const depIndicators = [
         "package.json", "pom.xml", "build.gradle", "build.gradle.kts",

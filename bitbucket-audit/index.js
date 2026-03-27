@@ -460,7 +460,9 @@ async function main() {
   // Hent alle prosjekter
   const projects = await getAllPages("/rest/api/1.0/projects");
 
-  // Hent arkiverte repos for å ekskludere dem (Bitbucket archive-API)
+  // Hent alle repos per prosjekt (sekvensielt — prosjekter er få)
+  // Filtrerer bort arkiverte repos via repo.archived-feltet (standard API)
+  // og via archive-API-et som fallback for eldre Bitbucket-versjoner.
   const archivedSlugs = new Set();
   try {
     const archived = await getAllPages("/rest/archive/1.0/repos?limit=1000");
@@ -482,7 +484,8 @@ async function main() {
     );
     for (const repo of repos) {
       if (repo.state === "AVAILABLE") {
-        if (archivedSlugs.has(`${proj.key}/${repo.slug}`)) {
+        const isArchived = repo.archived === true || archivedSlugs.has(`${proj.key}/${repo.slug}`);
+        if (isArchived) {
           archivedFiltered++;
         } else {
           allRepos.push({ projectKey: proj.key, repoSlug: repo.slug });
