@@ -17,6 +17,17 @@ const IMPLICIT_OWASP_PATTERNS = [
   "springBootMavenDeploy",
 ];
 
+// Byggfiler som kan inneholde OWASP-konfigurasjon (Maven/Gradle)
+const BUILD_FILES = ["pom.xml", "build.gradle", "build.gradle.kts"];
+
+// Mønstre som indikerer OWASP Dependency-Check i byggfiler
+const BUILD_FILE_OWASP_PATTERNS = [
+  "dependency-check-maven",
+  "dependency-check-gradle",
+  "org.owasp.dependencycheck",
+  "org.owasp",
+];
+
 // Filer som regnes som Jenkins-pipeline (dekker Jenkinsfile, Jenkinsfile.atlas, Jenkinsfile.groovy osv.)
 function findJenkinsfile(fileList) {
   return fileList.find((f) => f === "Jenkinsfile" || f.startsWith("Jenkinsfile."));
@@ -39,10 +50,30 @@ module.exports = {
 
       // Bitbucket returnerer filinnhold som linjer i .lines[].text
       const text = (content.lines || []).map((l) => l.text).join("\n");
-      return (
+      if (
         OWASP_PATTERNS.some((p) => text.includes(p)) ||
         IMPLICIT_OWASP_PATTERNS.some((p) => text.includes(p))
-      );
+      ) {
+        return true;
+      }
+
+      // 3. Sjekk byggfiler (pom.xml, build.gradle) for OWASP-plugin-konfigurasjon
+      const buildFiles = list.filter((f) => BUILD_FILES.some((bf) => f === bf || f.endsWith("/" + bf)));
+      for (const bf of buildFiles) {
+        try {
+          const bfContent = await request(
+            `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/browse/${encodeURIComponent(bf)}?limit=10000`
+          );
+          const bfText = (bfContent.lines || []).map((l) => l.text).join("\n");
+          if (BUILD_FILE_OWASP_PATTERNS.some((p) => bfText.includes(p))) {
+            return true;
+          }
+        } catch {
+          // Feil ved lesing av enkelt byggfil — fortsett med neste
+        }
+      }
+
+      return false;
     } catch {
       return false;
     }
