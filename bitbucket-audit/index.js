@@ -32,6 +32,14 @@ function validateEnv() {
     );
     process.exit(1);
   }
+  const parsedUrl = new URL(BITBUCKET_URL);
+  if (parsedUrl.protocol !== "https:") {
+    console.error(
+      "Feil: BITBUCKET_URL må bruke HTTPS for å beskytte tokenet under overføring.\n" +
+        "  Bruk: https://bitbucket.eksempel.no"
+    );
+    process.exit(1);
+  }
 }
 
 // ---------------------------------------------------------------------------
