@@ -141,14 +141,21 @@ function buildReport(repoResults, checks) {
 
   for (const chk of checks) {
     const passed       = repoResults.filter((r) => r.checks[chk.id] === true).length;
-    const failed       = repoResults.filter((r) => r.checks[chk.id] === false).length;
     const notApplicable = repoResults.filter((r) => r.checks[chk.id] === null).length;
+    const coveredByAlt = repoResults.filter((r) =>
+      r.checks[chk.id] === false &&
+      r.assessments && r.assessments[chk.id] &&
+      r.assessments[chk.id].startsWith("Ikke nødvendig")
+    ).length;
+    const failed       = repoResults.filter((r) => r.checks[chk.id] === false).length - coveredByAlt;
     const applicable   = total - notApplicable;
+    const covered      = passed + coveredByAlt;
     byCheck[chk.id] = {
       passed,
       failed,
+      coveredByAlt,
       notApplicable,
-      coveragePercent: applicable ? +((passed / applicable) * 100).toFixed(1) : 0,
+      coveragePercent: applicable ? +((covered / applicable) * 100).toFixed(1) : 0,
     };
   }
 
@@ -210,14 +217,15 @@ function buildMarkdownReport(report, checks) {
     lines.push("");
   }
 
-  lines.push(`| Sjekker | Bestått | Feilet | Ikke aktuelt | Dekning (av aktuelle) |`);
-  lines.push(`| ------- | -------:| ------:| ------------:| ---------------------:|`);
+  lines.push(`| Sjekker | Bestått | Dekket | Feilet | Ikke aktuelt | Dekning (av aktuelle) |`);
+  lines.push(`| ------- | -------:| ------:| ------:| ------------:| ---------------------:|`);
   for (const chk of checks) {
     const s = report.summary.byCheck[chk.id];
     const pct = s.coveragePercent.toFixed(1);
     const icon = s.coveragePercent >= 80 ? "🟢" : s.coveragePercent >= 40 ? "🟡" : "🔴";
     const naCell = s.notApplicable > 0 ? `➖ ${s.notApplicable}` : "—";
-    lines.push(`| ${chk.label} | ${s.passed} | ${s.failed} | ${naCell} | ${icon} ${pct}% |`);
+    const covCell = s.coveredByAlt > 0 ? `➡️ ${s.coveredByAlt}` : "—";
+    lines.push(`| ${chk.label} | ${s.passed} | ${covCell} | ${s.failed} | ${naCell} | ${icon} ${pct}% |`);
   }
   lines.push("");
 
@@ -360,10 +368,12 @@ function printReport(report, checks) {
     const s   = report.summary.byCheck[chk.id];
     const pct = s.coveragePercent;
     const applicable = report.summary.total - s.notApplicable;
+    const covered = s.passed + (s.coveredByAlt || 0);
     const filled = Math.round((pct / 100) * BAR_WIDTH);
     const bar = c.green + "█".repeat(filled) + c.reset + c.dim + "░".repeat(BAR_WIDTH - filled) + c.reset;
     const label = chk.label.padEnd(22);
-    const fraction = `${String(s.passed).padStart(4)} / ${applicable}${s.notApplicable > 0 ? ` (${c.dim}${s.notApplicable} ikke aktuell${c.reset})` : ""}`;
+    const altNote = s.coveredByAlt > 0 ? ` ${c.dim}(${s.coveredByAlt} dekket av alt.)${c.reset}` : "";
+    const fraction = `${String(covered).padStart(4)} / ${applicable}${altNote}${s.notApplicable > 0 ? ` (${c.dim}${s.notApplicable} ikke aktuell${c.reset})` : ""}`;
     const pctStr = `${pct.toFixed(1).padStart(5)}%`;
     const color = pct >= 80 ? c.green : pct >= 40 ? c.yellow : c.red;
     console.log(`  ${c.bold}${label}${c.reset} ${bar}  ${fraction}  ${color}${pctStr}${c.reset}`);
@@ -551,17 +561,21 @@ async function main() {
   // Kjør sjekkere parallelt via pool, sjekkere sekvensielt per repo
   const repoResults = await pooledMap(allRepos, async ({ projectKey, repoSlug }) => {
     const result = { project: projectKey, repo: repoSlug, checks: {}, assessments: {} };
+
+    // Kjør alle sjekker først
     for (const chk of checks) {
       try {
         result.checks[chk.id] = await chk.run(projectKey, repoSlug, request);
       } catch {
         result.checks[chk.id] = false;
       }
+    }
 
-      // Kjør vurdering kun når sjekken eksplisitt feilet (false), ikke når den er ikke-aktuell (null)
+    // Kjør vurderinger med tilgang til alle sjekkresultater (muliggjør kryssreferanser)
+    for (const chk of checks) {
       if (result.checks[chk.id] === false && typeof chk.assess === "function") {
         try {
-          result.assessments[chk.id] = await chk.assess(projectKey, repoSlug, request);
+          result.assessments[chk.id] = await chk.assess(projectKey, repoSlug, request, result);
         } catch {
           result.assessments[chk.id] = "Kunne ikke vurdere.";
         }

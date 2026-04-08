@@ -1,6 +1,6 @@
 "use strict";
 
-const { listAllFiles } = require("./utils");
+const { listAllFiles, findJenkinsfile } = require("./utils");
 
 // Mønstre som indikerer bruk av OWASP Dependency-Check i en pipeline
 const OWASP_PATTERNS = [
@@ -27,11 +27,6 @@ const BUILD_FILE_OWASP_PATTERNS = [
   "org.owasp.dependencycheck",
   "org.owasp",
 ];
-
-// Filer som regnes som Jenkins-pipeline (dekker Jenkinsfile, Jenkinsfile.atlas, Jenkinsfile.groovy osv.)
-function findJenkinsfile(fileList) {
-  return fileList.find((f) => f === "Jenkinsfile" || f.startsWith("Jenkinsfile."));
-}
 
 module.exports = {
   id: "owasp-dep-check",
@@ -83,8 +78,13 @@ module.exports = {
    * Vurderer om repoet bør ha OWASP Dependency-Check i pipeline.
    * Returnerer en kort vurderingstekst.
    */
-  assess: async (projectKey, repoSlug, request) => {
+  assess: async (projectKey, repoSlug, request, result) => {
     try {
+      // Sjekk om npm audit allerede dekker sårbarhetsskanning
+      if (result && result.checks["npm-audit"] === true) {
+        return "Ikke nødvendig — dekkes av npm audit i pipeline.";
+      }
+
       // assess kalles kun når run() returnerer false,
       // dvs. repoet har Jenkinsfile men OWASP-sjekk mangler.
       const list = await listAllFiles(projectKey, repoSlug, request);

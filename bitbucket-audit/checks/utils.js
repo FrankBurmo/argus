@@ -22,4 +22,9 @@ async function listAllFiles(projectKey, repoSlug, request) {
   return results;
 }
 
-module.exports = { listAllFiles };
+// Filer som regnes som Jenkins-pipeline (dekker Jenkinsfile, Jenkinsfile.atlas, Jenkinsfile.groovy osv.)
+function findJenkinsfile(fileList) {
+  return fileList.find((f) => f === "Jenkinsfile" || f.startsWith("Jenkinsfile."));
+}
+
+module.exports = { listAllFiles, findJenkinsfile };
