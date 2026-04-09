@@ -568,7 +568,7 @@ async function main() {
 
   // Kjør sjekkere parallelt via pool, sjekkere sekvensielt per repo
   const repoResults = await pooledMap(allRepos, async ({ projectKey, repoSlug }) => {
-    const result = { project: projectKey, repo: repoSlug, checks: {}, assessments: {} };
+    const result = { project: projectKey, repo: repoSlug, checks: {}, assessments: {}, vulnerabilities: [] };
 
     // Kjør alle sjekker først
     for (const chk of checks) {
@@ -589,6 +589,21 @@ async function main() {
         }
       }
     }
+
+    // Hent detaljert sårbarhetsinformasjon fra sjekker som støtter det
+    for (const chk of checks) {
+      if (typeof chk.collectVulnerabilities === "function") {
+        try {
+          const vulns = await chk.collectVulnerabilities(projectKey, repoSlug, request);
+          if (vulns.length > 0) {
+            result.vulnerabilities.push(...vulns);
+          }
+        } catch {
+          // Ignorer feil ved innhenting av detaljer — sjekk-resultatet er allerede satt
+        }
+      }
+    }
+
     done++;
     const allPassed = checks.every((c) => result.checks[c.id] !== false);
     process.stdout.write(allPassed ? "✓" : ".");

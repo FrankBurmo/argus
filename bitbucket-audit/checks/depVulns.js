@@ -244,9 +244,67 @@ function osvRequest(endpoint, body) {
 }
 
 /**
+ * Plukker ut nøkkelinfo fra en OSV-sårbarhet til et kompakt format
+ * egnet for rapportgenerering og GUI-visning.
+ */
+function summarizeVuln(vuln, pkgName, pkgVersion, ecosystem) {
+  const sevRank = getMaxSeverity(vuln);
+  const sevLabel = Object.entries(SEVERITY_RANK)
+    .find(([, v]) => v === sevRank)?.[0] || "UNKNOWN";
+
+  // Hent CVSS-score (v3 foretrukket)
+  let cvssScore = null;
+  if (Array.isArray(vuln.severity)) {
+    for (const s of vuln.severity) {
+      if (s.type === "CVSS_V3" && s.score) {
+        cvssScore = parseFloat(s.score);
+      }
+    }
+  }
+
+  // Hent CVE-alias
+  const aliases = vuln.aliases || [];
+  const cveId = aliases.find((a) => a.startsWith("CVE-")) || null;
+
+  // Hent fikset versjon fra affected-blokker
+  let fixedIn = null;
+  if (Array.isArray(vuln.affected)) {
+    for (const aff of vuln.affected) {
+      if (!aff.ranges) continue;
+      for (const range of aff.ranges) {
+        if (!range.events) continue;
+        for (const ev of range.events) {
+          if (ev.fixed) fixedIn = ev.fixed;
+        }
+      }
+    }
+  }
+
+  // Hent referanselenker (maks 5)
+  const references = (vuln.references || [])
+    .slice(0, 5)
+    .map((r) => ({ type: r.type, url: r.url }));
+
+  return {
+    id: vuln.id,
+    aliases,
+    cveId,
+    summary: vuln.summary || (vuln.details ? vuln.details.slice(0, 200) : "Ingen beskrivelse"),
+    severity: sevLabel,
+    severityRank: sevRank,
+    cvssScore,
+    package: pkgName,
+    version: pkgVersion,
+    ecosystem,
+    fixedIn,
+    references,
+  };
+}
+
+/**
  * Spør OSV.dev om sårbarheter for en liste avhengigheter.
  * Bruker in-memory cache per kjøring for å unngå dupliserte kall.
- * Returnerer [{ package, vulns }] — kun pakker med treff.
+ * Returnerer [{ package, version, ecosystem, vulns }] — kun pakker med treff.
  */
 async function queryOsvBatch(deps, severityThreshold) {
   const BATCH_SIZE = 1000;
@@ -260,7 +318,7 @@ async function queryOsvBatch(deps, severityThreshold) {
     if (vulnCache.has(key)) {
       const cached = vulnCache.get(key);
       if (cached.length > 0) {
-        results.push({ package: deps[i].name, version: deps[i].version, vulns: cached });
+        results.push({ package: deps[i].name, version: deps[i].version, ecosystem: deps[i].ecosystem, vulns: cached });
       }
     } else {
       uncached.push(deps[i]);
@@ -294,7 +352,7 @@ async function queryOsvBatch(deps, severityThreshold) {
         vulnCache.set(key, filtered);
 
         if (filtered.length > 0) {
-          results.push({ package: dep.name, version: dep.version, vulns: filtered });
+          results.push({ package: dep.name, version: dep.version, ecosystem: dep.ecosystem, vulns: filtered });
         }
       }
     } catch (err) {
@@ -304,6 +362,54 @@ async function queryOsvBatch(deps, severityThreshold) {
   }
 
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// Intern skannefunksjon (delt mellom run og collectVulnerabilities)
+// ---------------------------------------------------------------------------
+
+async function scanRepo(projectKey, repoSlug, request) {
+  const files = await listAllFiles(projectKey, repoSlug, request);
+  const threshold = getSeverityThreshold();
+
+  let allDeps = [];
+
+  for (const def of DEP_FILE_DEFS) {
+    const match = files.find(
+      (f) => f === def.filename || f.endsWith("/" + def.filename)
+    );
+    if (!match) continue;
+
+    try {
+      const raw = await fetchFileContent(projectKey, repoSlug, match, request);
+      const deps = def.parse(raw);
+      allDeps = allDeps.concat(deps);
+    } catch {
+      // Feil ved lesing/parsing av enkelt fil — fortsett med neste
+    }
+  }
+
+  if (allDeps.length === 0) return { passed: null, vulnerabilities: [] };
+
+  const hits = await queryOsvBatch(allDeps, threshold);
+
+  // Transformer hits til flat liste med kompakt sårbarhetsinformasjon
+  const vulnerabilities = [];
+  const seenVulns = new Set();
+  for (const hit of hits) {
+    for (const vuln of hit.vulns) {
+      // Dedupliser: samme sårbarhet fra ulike stier i samme repo
+      const key = `${vuln.id}|${hit.package}|${hit.version}`;
+      if (seenVulns.has(key)) continue;
+      seenVulns.add(key);
+      vulnerabilities.push(summarizeVuln(vuln, hit.package, hit.version, hit.ecosystem));
+    }
+  }
+
+  // Sorter: CRITICAL → HIGH → MEDIUM → LOW → UNKNOWN
+  vulnerabilities.sort((a, b) => b.severityRank - a.severityRank);
+
+  return { passed: hits.length === 0, vulnerabilities };
 }
 
 // ---------------------------------------------------------------------------
@@ -325,34 +431,26 @@ module.exports = {
    */
   async run(projectKey, repoSlug, request) {
     try {
-      const files = await listAllFiles(projectKey, repoSlug, request);
-      const threshold = getSeverityThreshold();
-
-      let allDeps = [];
-
-      // Finn og parse alle støttede avhengighetsfiler
-      for (const def of DEP_FILE_DEFS) {
-        const match = files.find(
-          (f) => f === def.filename || f.endsWith("/" + def.filename)
-        );
-        if (!match) continue;
-
-        try {
-          const raw = await fetchFileContent(projectKey, repoSlug, match, request);
-          const deps = def.parse(raw);
-          allDeps = allDeps.concat(deps);
-        } catch {
-          // Feil ved lesing/parsing av enkelt fil — fortsett med neste
-        }
-      }
-
-      if (allDeps.length === 0) return null;
-
-      // Spør OSV.dev med cache
-      const hits = await queryOsvBatch(allDeps, threshold);
-      return hits.length === 0;
+      const result = await scanRepo(projectKey, repoSlug, request);
+      return result.passed;
     } catch {
       return false;
+    }
+  },
+
+  /**
+   * Returnerer detaljert liste over faktiske sårbarheter funnet i repoet.
+   * Bruker OSV-cache fra run(), så kall dette etter run().
+   *
+   * Returnerer [{ id, cveId, summary, severity, cvssScore, package, version,
+   *               ecosystem, fixedIn, references, aliases }]
+   */
+  async collectVulnerabilities(projectKey, repoSlug, request) {
+    try {
+      const result = await scanRepo(projectKey, repoSlug, request);
+      return result.vulnerabilities;
+    } catch {
+      return [];
     }
   },
 

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Argus — Sikkerhetsrevisjon</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+</head>
+<body>
+  <!-- ====== Topplinje ====== -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">🛡️</span>
+      <h1 class="brand">Argus <span class="brand-sub">Code Security</span></h1>
+    </div>
+    <nav class="topbar-nav">
+      <button class="nav-btn active" data-view="summary">Oversikt</button>
+      <button class="nav-btn" data-view="vulnerabilities">Sårbarheter</button>
+      <button class="nav-btn" data-view="repos">Repositories</button>
+    </nav>
+    <div class="topbar-right">
+      <span id="report-meta" class="meta-text"></span>
+      <label class="file-upload-btn" for="file-input">
+        <span class="upload-icon">📂</span> Last inn rapport
+      </label>
+      <input type="file" id="file-input" accept=".json" hidden>
+    </div>
+  </header>
+
+  <!-- ====== Velkomst/opplasting ====== -->
+  <main id="landing" class="landing">
+    <div class="landing-card">
+      <div class="landing-icon">🛡️</div>
+      <h2>Argus — Sikkerhetsrevisjon</h2>
+      <p>Last inn en JSON-rapport fra en Argus-kjøring for å visualisere sikkerhetsstatusen til porteføljen din.</p>
+      <label class="landing-upload" for="file-input-landing">
+        <span class="upload-icon-lg">📂</span>
+        <span>Velg JSON-fil</span>
+        <span class="upload-hint">Dra og slipp, eller klikk for å velge</span>
+      </label>
+      <input type="file" id="file-input-landing" accept=".json" hidden>
+      <button id="load-demo-btn" class="demo-btn">Eller last inn demodata</button>
+    </div>
+  </main>
+
+  <!-- ====== Hovedinnhold ====== -->
+  <main id="app" class="app hidden">
+
+    <!-- ── Sammendrag / Dashboard ── -->
+    <section id="view-summary" class="view">
+      <div class="summary-cards" id="summary-cards"></div>
+
+      <div class="dashboard-grid">
+        <div class="card card-wide">
+          <h3 class="card-title">Sjekkdekning per kontroll</h3>
+          <div id="coverage-chart" class="chart-container"></div>
+        </div>
+        <div class="card">
+          <h3 class="card-title">Etter prosjekt</h3>
+          <div id="project-breakdown" class="breakdown-list"></div>
+        </div>
+        <div class="card">
+          <h3 class="card-title">Etter sjekk</h3>
+          <div id="check-breakdown" class="breakdown-list"></div>
+        </div>
+      </div>
+
+      <div class="card card-full">
+        <h3 class="card-title">Prioritert tiltaksliste</h3>
+        <p class="card-subtitle">Repos sortert etter antall anbefalte tiltak — start her for størst effekt.</p>
+        <div id="priority-table-container"></div>
+      </div>
+    </section>
+
+    <!-- ── Sårbarheter-explorer ── -->
+    <section id="view-vulnerabilities" class="view hidden">
+      <div class="explorer-layout">
+        <aside class="sidebar">
+          <h3 class="sidebar-title">Filtre</h3>
+
+          <div class="filter-group">
+            <h4 class="filter-label">Alvorlighetsgrad</h4>
+            <div id="filter-severity" class="filter-options"></div>
+          </div>
+
+          <div class="filter-group">
+            <h4 class="filter-label">Økosystem</h4>
+            <div id="filter-ecosystem" class="filter-options"></div>
+          </div>
+
+          <div class="filter-group">
+            <h4 class="filter-label">Prosjekt</h4>
+            <div id="filter-vuln-projects" class="filter-options"></div>
+          </div>
+
+          <div class="filter-group">
+            <h4 class="filter-label">Fiks tilgjengelig</h4>
+            <div id="filter-fix" class="filter-options"></div>
+          </div>
+        </aside>
+
+        <div class="explorer-main">
+          <div class="explorer-toolbar">
+            <input type="text" id="vuln-search-input" class="search-input" placeholder="Søk etter CVE, pakke, repo...">
+            <span id="vuln-result-count" class="result-count"></span>
+          </div>
+
+          <!-- Oppsummering per alvorlighetsgrad -->
+          <div id="vuln-severity-summary" class="vuln-severity-summary"></div>
+
+          <!-- Sårbarhetstabell -->
+          <div id="vuln-table-container" class="table-container"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Repos-visning ── -->
+    <section id="view-repos" class="view hidden">
+      <div class="card card-full">
+        <div class="explorer-toolbar">
+          <input type="text" id="repo-search-input" class="search-input" placeholder="Søk etter repo eller prosjekt...">
+          <span id="repo-result-count" class="result-count"></span>
+        </div>
+        <div id="repo-table-container" class="table-container"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ====== Detaljpanel (slide-in) ====== -->
+  <div id="detail-panel" class="detail-panel hidden">
+    <div class="detail-overlay"></div>
+    <div class="detail-content">
+      <button class="detail-close" id="detail-close">&times;</button>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <span>Generert av <a href="https://github.com/FrankBurmo/argus" target="_blank" rel="noopener">Argus</a></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
