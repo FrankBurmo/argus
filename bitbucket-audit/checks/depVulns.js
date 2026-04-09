@@ -24,6 +24,9 @@ const DEFAULT_THRESHOLD = "HIGH";
 // In-memory cache per kjøring: "ecosystem|name|version" → vulns-array
 const vulnCache = new Map();
 
+// Cache for fullstendige sårbarhetsobjekter fra GET /v1/vulns/{id}
+const vulnDetailCache = new Map();
+
 // ---------------------------------------------------------------------------
 // Hjelpefunksjoner
 // ---------------------------------------------------------------------------
@@ -64,26 +67,14 @@ function getSeverityThreshold() {
 }
 
 /**
- * Henter høyeste alvorlighetsgrad fra en OSV-sårbarhet (CVSS v3 → database_specific).
+ * Henter høyeste alvorlighetsgrad fra en OSV-sårbarhet.
+ * Primærkilde: database_specific.severity (tekstlabel satt av kilden).
+ * Sekundær: CVSS-numerisk score der score-feltet faktisk er et tall (ikke vektor).
  */
 function getMaxSeverity(vuln) {
   let max = 0;
 
-  // Sjekk severity-feltet (OSV-format)
-  if (Array.isArray(vuln.severity)) {
-    for (const s of vuln.severity) {
-      // CVSS v3-vektorer inneholder ofte severity-nivå i database
-      if (s.type === "CVSS_V3" && s.score) {
-        const cvss = parseFloat(s.score);
-        if (cvss >= 9.0) max = Math.max(max, SEVERITY_RANK.CRITICAL);
-        else if (cvss >= 7.0) max = Math.max(max, SEVERITY_RANK.HIGH);
-        else if (cvss >= 4.0) max = Math.max(max, SEVERITY_RANK.MEDIUM);
-        else if (cvss > 0) max = Math.max(max, SEVERITY_RANK.LOW);
-      }
-    }
-  }
-
-  // Sjekk database_specific.severity (brukt av mange OSV-kilder)
+  // Sjekk database_specific.severity (brukt av GHSA, NVD m.fl.)
   if (vuln.database_specific && vuln.database_specific.severity) {
     const sev = vuln.database_specific.severity.toUpperCase();
     if (SEVERITY_RANK[sev] !== undefined) {
@@ -96,6 +87,21 @@ function getMaxSeverity(vuln) {
     const sev = vuln.ecosystem_specific.severity.toUpperCase();
     if (SEVERITY_RANK[sev] !== undefined) {
       max = Math.max(max, SEVERITY_RANK[sev]);
+    }
+  }
+
+  // Siste fallback: numerisk CVSS-score i severity[].score (kun der det faktisk er et tall)
+  if (max === 0 && Array.isArray(vuln.severity)) {
+    for (const s of vuln.severity) {
+      if (s.score) {
+        const cvss = parseFloat(s.score);
+        if (!isNaN(cvss)) {
+          if (cvss >= 9.0) max = Math.max(max, SEVERITY_RANK.CRITICAL);
+          else if (cvss >= 7.0) max = Math.max(max, SEVERITY_RANK.HIGH);
+          else if (cvss >= 4.0) max = Math.max(max, SEVERITY_RANK.MEDIUM);
+          else if (cvss > 0) max = Math.max(max, SEVERITY_RANK.LOW);
+        }
+      }
     }
   }
 
@@ -257,6 +263,60 @@ function parseGoSum(raw) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Henter ett fullstendig sårbarhetsobjekt fra OSV via GET /v1/vulns/{id}.
+ */
+function osvGet(vulnId) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      `https://api.osv.dev/v1/vulns/${encodeURIComponent(vulnId)}`,
+      { method: "GET" },
+      (res) => {
+        let buf = "";
+        res.on("data", (chunk) => (buf += chunk));
+        res.on("end", () => {
+          try { resolve(JSON.parse(buf)); }
+          catch { reject(new Error(`Ugyldig OSV-respons for ${vulnId}: ${buf.slice(0, 100)}`)); }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+/**
+ * Enricher en liste med avkortede sårbarhetsobjekter (kun id+modified fra querybatch)
+ * ved å hente fullstendige detaljer fra GET /v1/vulns/{id} for unkjente IDer.
+ * Bruker vulnDetailCache for å unngå duplikatkall på tvers av repos.
+ */
+async function enrichVulns(rawVulns) {
+  const CONCURRENCY = 10;
+
+  // Finn IDer vi ikke allerede har cachet
+  const toFetch = [...new Set(
+    rawVulns.map((v) => v.id).filter((id) => !vulnDetailCache.has(id))
+  )];
+
+  // Hent detaljer parallelt i bolker for å ikke overvelde API-et
+  for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
+    const batch = toFetch.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      batch.map(async (id) => {
+        try {
+          vulnDetailCache.set(id, await osvGet(id));
+        } catch {
+          // Marker som null for å unngå gjentatte forsøk
+          vulnDetailCache.set(id, null);
+        }
+      })
+    );
+  }
+
+  // Bytt ut avkortede objekter med fullstendige (behold original som fallback)
+  return rawVulns.map((v) => vulnDetailCache.get(v.id) || v);
+}
+
+/**
  * Sender en POST-forespørsel til OSV.dev og returnerer JSON-respons.
  */
 function osvRequest(endpoint, body) {
@@ -293,14 +353,14 @@ function summarizeVuln(vuln, pkgName, pkgVersion, ecosystem) {
   const sevLabel = Object.entries(SEVERITY_RANK)
     .find(([, v]) => v === sevRank)?.[0] || "UNKNOWN";
 
-  // Hent CVSS-score (v3 foretrukket)
+  // Hent CVSS-score (v3 foretrukket).
+  // NB: OSV severity[].score er en CVSS-vektorstreng (eks. "CVSS:3.1/AV:N/..."),
+  // ikke et flytall — hent numerisk score fra database_specific i stedet.
   let cvssScore = null;
-  if (Array.isArray(vuln.severity)) {
-    for (const s of vuln.severity) {
-      if (s.type === "CVSS_V3" && s.score) {
-        cvssScore = parseFloat(s.score);
-      }
-    }
+  if (vuln.database_specific && typeof vuln.database_specific.cvss_score === "number") {
+    cvssScore = vuln.database_specific.cvss_score;
+  } else if (vuln.database_specific && typeof vuln.database_specific.cvss === "number") {
+    cvssScore = vuln.database_specific.cvss;
   }
 
   // Hent CVE-alias
@@ -381,13 +441,20 @@ async function queryOsvBatch(deps, severityThreshold) {
       const response = await osvRequest("querybatch", body);
       if (!response.results) continue;
 
+      // Samle alle unike vuln-IDer på tvers av batch for enrichment i ett pass
+      const allRawVulns = response.results.flatMap((r) => r.vulns || []);
+      await enrichVulns(allRawVulns);
+
       for (let j = 0; j < response.results.length; j++) {
         const dep = batch[j];
         const key = `${dep.ecosystem}|${dep.name}|${dep.version}`;
-        const rawVulns = response.results[j].vulns || [];
+        // Bytt ut avkortede objekter med fullstendige fra cache
+        const fullVulns = (response.results[j].vulns || []).map(
+          (v) => vulnDetailCache.get(v.id) || v
+        );
 
         // Filtrer på alvorlighetsgrad
-        const filtered = filterBySeverity(rawVulns, severityThreshold);
+        const filtered = filterBySeverity(fullVulns, severityThreshold);
 
         // Legg i cache (også tomme resultater for å unngå nye kall)
         vulnCache.set(key, filtered);
