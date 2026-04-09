@@ -297,8 +297,9 @@ async function queryOsvBatch(deps, severityThreshold) {
           results.push({ package: dep.name, version: dep.version, vulns: filtered });
         }
       }
-    } catch {
+    } catch (err) {
       // Ved feil mot OSV — marker uncached deps som ukjent (ikke cache feil)
+      console.error(`[depVulns] OSV-batch-feil (${batch.length} pakker): ${err.message}`);
     }
   }
 
