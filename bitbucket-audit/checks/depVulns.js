@@ -33,10 +33,26 @@ const vulnCache = new Map();
  * Returnerer sammenhengende tekst.
  */
 async function fetchFileContent(projectKey, repoSlug, filePath, request) {
-  const content = await request(
-    `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/browse/${encodeURIComponent(filePath)}?limit=50000`
-  );
-  return (content.lines || []).map((l) => l.text).join("\n");
+  // Enkoder hvert path-segment separat for å bevare faktiske skråstreker i URL-en
+  const encodedPath = filePath.split("/").map(encodeURIComponent).join("/");
+  const lines = [];
+  let start = 0;
+
+  // Bitbucket browse-API paginerer linjer — hent alle sider for store filer
+  while (true) {
+    const content = await request(
+      `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/browse/${encodedPath}?limit=5000&start=${start}`
+    );
+    if (Array.isArray(content.lines)) {
+      lines.push(...content.lines.map((l) => l.text));
+    }
+    if (content.isLastPage !== false) break;
+    start = content.nextPageStart;
+    // Sikkerhetsbegrensning: maks 200 000 linjer per fil
+    if (lines.length >= 200000) break;
+  }
+
+  return lines.join("\n");
 }
 
 /**
@@ -138,22 +154,47 @@ function parsePkgLock(raw) {
 /**
  * Parser for pom.xml (Maven).
  * Henter <dependency>-blokker med groupId, artifactId og versjon.
+ * Løser opp ${property}-referanser fra <properties>-blokken.
+ * Hopper over <dependencyManagement>-seksjoner (kun versjonskatalog).
  * OSV Maven-format: "groupId:artifactId".
  */
 function parsePomXml(raw) {
   const deps = [];
+
+  // Fjern <dependencyManagement>-blokken slik at dens <dependency>-entries
+  // ikke feiltolkes som faktiske runtime-avhengigheter
+  const rawWithoutDm = raw.replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/gi, "");
+
+  // Trekk ut <properties> og bygg opp et oppslag for property-oppløsning
+  const propsMap = {};
+  const propsMatch = rawWithoutDm.match(/<properties>([\s\S]*?)<\/properties>/i);
+  if (propsMatch) {
+    const propRe = /<([a-zA-Z0-9._-]+)>\s*([^<]+?)\s*<\/[a-zA-Z0-9._-]+>/g;
+    let pm;
+    while ((pm = propRe.exec(propsMatch[1])) !== null) {
+      propsMap[pm[1]] = pm[2].trim();
+    }
+  }
+
+  // Løser opp ${key}-referanser mot propsMap
+  function resolveVersion(v) {
+    if (!v) return null;
+    const m = v.match(/^\$\{([^}]+)\}$/);
+    if (m) return propsMap[m[1]] || null; // ukjent property → hopp over
+    if (v.includes("${")) return null;   // blandet uttrykk → ikke støttet
+    return v;
+  }
+
   // Match <dependency>-blokker (ikke-grådig for å håndtere flere blokker)
   const depBlockRe = /<dependency>([\s\S]*?)<\/dependency>/gi;
   let block;
-  while ((block = depBlockRe.exec(raw)) !== null) {
+  while ((block = depBlockRe.exec(rawWithoutDm)) !== null) {
     const inner = block[1];
     const groupId = extractXmlTag(inner, "groupId");
     const artifactId = extractXmlTag(inner, "artifactId");
-    const version = extractXmlTag(inner, "version");
+    const version = resolveVersion(extractXmlTag(inner, "version"));
 
     if (!groupId || !artifactId || !version) continue;
-    // Hopp over versjoner som bruker Maven-properties (${...})
-    if (version.includes("${")) continue;
 
     deps.push({
       name: `${groupId}:${artifactId}`,
