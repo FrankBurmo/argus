@@ -338,7 +338,7 @@ function buildMarkdownReport(report, checks) {
   }
 
   lines.push("---");
-  lines.push(`*Rapport generert av [Argus](https://github.com/your-org/argus)*`);
+  lines.push(`*Rapport generert av [Argus](https://github.com/FrankBurmo/argus)*`);
   lines.push("");
 
   return lines.join("\n");
