@@ -131,10 +131,46 @@ Det er alt. Resten av systemet plukker opp sjekken automatisk.
 
 ## Innebygde sjekker
 
-| ID                 | Beskrivelse                                                                 |
-| ------------------ | --------------------------------------------------------------------------- |
-| `renovate`         | Sjekker om repoet har Renovate Bot-konfigurasjon                            |
-| `owasp-dep-check`  | Sjekker om Jenkinsfile inneholder OWASP Dependency-Check (SCA-scanning)     |
+### Avhengigheter og sikkerhet
+
+| ID | Label | Beskrivelse | Hvorfor viktig |
+|----|-------|-------------|----------------|
+| `renovate` | Renovate Bot | Sjekker om repoet har Renovate Bot-konfigurasjon (`renovate.json`, `.renovaterc`, osv.) | Utdaterte avhengigheter er en av de vanligste angrepsvektorene. Automatisk oppdatering reduserer teknisk gjeld og risiko. |
+| `owasp-dep-check` | OWASP Dependency-Check | Sjekker om OWASP Dependency-Check er integrert i Jenkinsfile eller byggfiler | Statisk analyse av kjente sårbarheter i avhengigheter (CVE-database). Særlig viktig for Java/Maven-prosjekter. |
+| `npm-audit` | npm Audit | Sjekker om `npm audit` kjøres i CI/CD-pipeline eller som npm-script | Fanger kjente sårbarheter i Node.js-avhengigheter direkte i pipeline. Supplerer OWASP for JavaScript-repoer. |
+| `dep-vulns` | Kjente sårbarheter (OSV) | Skanner avhengighetsfiler (`package-lock.json`, `pom.xml`, `requirements.txt`, `go.sum`) mot [OSV.dev](https://osv.dev/) API for HIGH/CRITICAL-sårbarheter | Aktiv sjekk som finner *reelle* sårbarheter — ikke bare om verktøy er konfigurert. Konfigurerbar terskel via `OSV_SEVERITY_THRESHOLD` (standard: `HIGH`). |
+| `secrets` | Hemmeligheter i kode | Sjekker om repoet inneholder filer som tyder på lekkede hemmeligheter: `.env`, `id_rsa`, `*.pem`, `*.key`, `credentials.json`, `.npmrc`, osv. | Lekkede hemmeligheter i kode er en av de vanligste og mest alvorlige sikkerhetshendelsene. Lav kompleksitet, høy gevinst. |
+
+### Governance og prosess
+
+| ID | Label | Beskrivelse | Hvorfor viktig |
+|----|-------|-------------|----------------|
+| `codeowners` | CODEOWNERS | Sjekker om repoet har en `CODEOWNERS`- eller `CODEOWNERS.md`-fil | Definerer hvem som eier koden og er ansvarlig for code review. Viktig for onboarding og ansvarsfordeling. |
+| `branch-protection` | Branch-beskyttelse | Sjekker om default branch har branch-permissions satt opp i Bitbucket (krav om PR, reviewers, restriksjoner på direkte push) | Uten branch-beskyttelse kan hvem som helst pushe direkte til produksjonskode. Grunnleggende for kode-integritet. |
+| `pr-activity` | PR-praksis | Sjekker om repoet har nylige merged pull requests med reviewers de siste `PR_MONTHS` månedene (standard: 6) | Code review fanger feil og sårbarheter tidlig. Repoer uten PR-praksis har høyere risiko for feil og dårlig kodekvalitet. |
+
+### DevOps-modenhet
+
+| ID | Label | Beskrivelse | Hvorfor viktig |
+|----|-------|-------------|----------------|
+| `pipeline` | CI/CD-pipeline | Sjekker om repoet har en definert pipeline: Jenkinsfile, GitHub Actions (`.github/workflows/`), GitLab CI, Bitbucket Pipelines, osv. | Uten CI/CD er bygging, testing og deploy manuelt og feilbart. Grunnleggende for DevOps-modenhet — uten pipeline gir mange andre sjekker lite verdi. |
+| `stale` | Aktivt repo | Sjekker om repoet har hatt commit-aktivitet de siste `STALE_MONTHS` månedene (standard: 12) | Inaktive repoer bør identifiseres for arkivering eller avvikling. Reduserer støy i revisjonen og synliggjør teknisk gjeld. |
+
+### Kodekvalitet og dokumentasjon
+
+| ID | Label | Beskrivelse | Hvorfor viktig |
+|----|-------|-------------|----------------|
+| `readme` | README | Sjekker om repoet har en `README.md` i roten | Et repo uten README er vanskelig å forstå og onboarde seg inn i. Grunnleggende dokumentasjonshygiene. |
+| `tests` | Tester | Sjekker om repoet har testmapper (`test/`, `__tests__/`, `spec/`, osv.) eller testfiler (`.test.js`, `_test.go`, `Test.java`, osv.) | Repoer uten tester har ukjent kvalitet og er risikable å endre. Grunnleggende indikator for kodemodenhet. |
+| `linting` | Linting/formatering | Sjekker om repoet har konfigurert linting- eller formateringsverktøy: ESLint, Prettier, Biome, Flake8, Pylint, Checkstyle, EditorConfig, osv. | Kodekvalitetsverktøy sikrer konsistent stil og fanger vanlige feil tidlig. Viktig for vedlikeholdbarhet på tvers av team. |
+
+### Konfigurerbare terskler
+
+| Miljøvariabel | Standard | Beskrivelse |
+|---------------|----------|-------------|
+| `OSV_SEVERITY_THRESHOLD` | `HIGH` | Minstealvorlighetsgrad for `dep-vulns`: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` |
+| `STALE_MONTHS` | `12` | Antall måneder uten commit før repoet regnes som inaktivt |
+| `PR_MONTHS` | `6` | Tidsvindu (måneder) for å vurdere PR-aktivitet |
 
 ## Rapportformat
 
