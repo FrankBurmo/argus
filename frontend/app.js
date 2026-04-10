@@ -911,6 +911,7 @@ function showRepoDetail(project, repoSlug) {
               ${chk.id === "npm-audit" ? '<a href="https://docs.npmjs.com/cli/v10/commands/npm-audit" target="_blank" rel="noopener">🔗 npm audit docs</a>' : ""}
               ${chk.id === "renovate" ? '<a href="https://docs.renovatebot.com/" target="_blank" rel="noopener">🔗 Renovate docs</a>' : ""}
               ${chk.id === "secrets" ? '<a href="https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/06-Identify_Application_Entry_Points" target="_blank" rel="noopener">🔗 OWASP Testing Guide</a>' : ""}
+              ${chk.id === "codeowners" ? '<a href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners" target="_blank" rel="noopener">🔗 CODEOWNERS-dokumentasjon</a>' : ""}
             </div>
           </div>
         </div>
@@ -1094,6 +1095,12 @@ function generateDemoData() {
         "Lintere funnet: Checkstyle, EditorConfig.",
       ];
       assessments["linting"] = linterCombos[i % linterCombos.length];
+    }
+
+    // Legg til CODEOWNERS-filsti i assessments for repos som bestod sjekken
+    if (checks["codeowners"] === true) {
+      const demoFiles = ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS", "CODEOWNERS.md"];
+      assessments["codeowners"] = `Funnet: ${demoFiles[i % demoFiles.length]}`;
     }
 
     repos.push({ project, repo: repoName, checks, assessments, vulnerabilities });
