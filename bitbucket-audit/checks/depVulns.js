@@ -12,7 +12,7 @@ const DEP_FILE_DEFS = [
   { filename: "package-lock.json", ecosystem: "npm", parse: parsePkgLock },
   { filename: "pom.xml", ecosystem: "Maven", parse: parsePomXml },
   { filename: "requirements.txt", ecosystem: "PyPI", parse: parseRequirementsTxt },
-  { filename: "go.sum", ecosystem: "Go", parse: parseGoSum },
+  { filename: "go.mod", ecosystem: "Go", parse: parseGoMod },
 ];
 
 // OSV alvorlighetsgrad-rangering (lavest → høyest)
@@ -241,8 +241,58 @@ function parseRequirementsTxt(raw) {
 }
 
 /**
- * Parser for go.sum.
+ * Parser for go.mod.
+ * Henter require-blokker med modul og versjon.
+ * go.mod representerer hva som faktisk er kompilert — i motsetning til go.sum
+ * som også inneholder hashes for moduler som ikke er i aktiv bruk.
+ */
+function parseGoMod(raw) {
+  const deps = [];
+  const seen = new Set();
+  let inBlock = false;
+
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith("//")) continue;
+
+    if (/^require\s*\(/.test(trimmed)) {
+      inBlock = true;
+      continue;
+    }
+    if (trimmed === ")") {
+      inBlock = false;
+      continue;
+    }
+
+    let match;
+    if (inBlock) {
+      // Inne i require-blokk: "modulsti versjon [// indirect]"
+      match = trimmed.match(/^([^\s]+)\s+(v[^\s]+)/);
+    } else {
+      // Enkelt require: "require modulsti versjon"
+      match = trimmed.match(/^require\s+([^\s]+)\s+(v[^\s]+)/);
+    }
+
+    if (match) {
+      const name = match[1];
+      const version = match[2].replace(/^v/, "");
+      const key = `${name}@${version}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deps.push({ name, version, ecosystem: "Go" });
+      }
+    }
+  }
+
+  return deps;
+}
+
+/**
+ * Parser for go.sum (beholdt for referanse/testing).
  * Format: "modul versjon hash"
+ * NB: go.sum inneholder hashes for alle nedlastede moduler, inkludert
+ * indirekte avhengigheter som ikke nødvendigvis er i aktiv bruk.
  */
 function parseGoSum(raw) {
   const seen = new Set();
@@ -597,6 +647,7 @@ module.exports = {
   _parsePkgLock: parsePkgLock,
   _parsePomXml: parsePomXml,
   _parseRequirementsTxt: parseRequirementsTxt,
+  _parseGoMod: parseGoMod,
   _parseGoSum: parseGoSum,
   _filterBySeverity: filterBySeverity,
   _vulnCache: vulnCache,
