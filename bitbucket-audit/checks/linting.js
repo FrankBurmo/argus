@@ -18,6 +18,8 @@ const LINTING_FILES = [
   ".prettierrc.json",
   ".prettierrc.yml",
   "prettier.config.js",
+  ".oxlintrc.json",
+  ".oxlint.config.ts",
   "biome.json",
   "biome.jsonc",
   "tslint.json",

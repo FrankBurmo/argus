@@ -10,6 +10,9 @@ const { listAllFiles } = require("./utils");
 // Avhengighetsfiler vi leter etter, med tilhørende økosystem og parser
 const DEP_FILE_DEFS = [
   { filename: "package-lock.json", ecosystem: "npm", parse: parsePkgLock },
+  // mvn-dependency-list.txt (output fra «mvn dependency:list -DoutputFile=mvn-dependency-list.txt»)
+  // gir fullstendige transitive avhengigheter med oppløste versjoner — foretrekkes over pom.xml
+  { filename: "mvn-dependency-list.txt", ecosystem: "Maven", parse: parseMvnDepList },
   { filename: "pom.xml", ecosystem: "Maven", parse: parsePomXml },
   { filename: "requirements.txt", ecosystem: "PyPI", parse: parseRequirementsTxt },
   { filename: "go.sum", ecosystem: "Go", parse: parseGoSum },
@@ -198,6 +201,59 @@ function extractXmlTag(xml, tagName) {
   const re = new RegExp(`<${tagName}>\\s*([^<]+?)\\s*</${tagName}>`, "i");
   const m = xml.match(re);
   return m ? m[1] : null;
+}
+
+/**
+ * Parser for utdata fra «mvn dependency:list».
+ *
+ * Støttede linjeformater:
+ *   groupId:artifactId:type:version:scope
+ *   groupId:artifactId:type:version:classifier:scope
+ *   [INFO]    groupId:artifactId:type:version:scope   (konsollog-format)
+ *
+ * Fordeler over parsePomXml:
+ *   - Inkluderer transitive avhengigheter
+ *   - Alle versjoner er allerede oppløst (ingen ${property}-referanser)
+ *   - Fanger avhengigheter styrt av BOM/parent-POM uten eksplisitt <version>
+ *
+ * Generer filen med:
+ *   mvn dependency:list -DoutputFile=mvn-dependency-list.txt -DappendOutput=false
+ *
+ * OSV Maven-format: "groupId:artifactId".
+ */
+function parseMvnDepList(raw) {
+  const deps = [];
+  const seen = new Set();
+
+  for (const line of raw.split("\n")) {
+    // Fjern ledende/følgende mellomrom og valgfri [INFO]-prefiks fra konsollog
+    const trimmed = line.trim().replace(/^\[INFO\]\s*/, "").trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    // Format: groupId:artifactId:type:version[:classifier]:scope
+    // Minimum 5 deler (uten klassifiserer); 6 deler med klassifiserer.
+    // Versjonen er alltid på indeks 3 i begge formater.
+    const parts = trimmed.split(":");
+    if (parts.length < 5) continue;
+
+    const groupId = parts[0].trim();
+    const artifactId = parts[1].trim();
+    const version = parts[3].trim();
+
+    // Hopp over linjer som ikke ser ut som Maven-koordinater
+    // (gruppeId og artifaktId skal ikke inneholde mellomrom)
+    if (!groupId || !artifactId || !version) continue;
+    if (/\s/.test(groupId) || /\s/.test(artifactId) || /\s/.test(version)) continue;
+
+    const name = `${groupId}:${artifactId}`;
+    const key = `${name}@${version}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    deps.push({ name, version, ecosystem: "Maven" });
+  }
+
+  return deps;
 }
 
 /**
@@ -567,6 +623,7 @@ module.exports = {
 
   // Eksponert for testing
   _parsePkgLock: parsePkgLock,
+  _parseMvnDepList: parseMvnDepList,
   _parsePomXml: parsePomXml,
   _parseRequirementsTxt: parseRequirementsTxt,
   _parseGoSum: parseGoSum,
