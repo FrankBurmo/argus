@@ -146,7 +146,7 @@ Det er alt. Resten av systemet plukker opp sjekken automatisk.
 | ID | Label | Beskrivelse | Hvorfor viktig |
 |----|-------|-------------|----------------|
 | `codeowners` | CODEOWNERS | Sjekker om repoet har en `CODEOWNERS`- eller `CODEOWNERS.md`-fil | Definerer hvem som eier koden og er ansvarlig for code review. Viktig for onboarding og ansvarsfordeling. |
-| `branch-protection` | Branch-beskyttelse | Sjekker om default branch har branch-permissions satt opp i Bitbucket (krav om PR, reviewers, restriksjoner på direkte push) | Uten branch-beskyttelse kan hvem som helst pushe direkte til produksjonskode. Grunnleggende for kode-integritet. |
+| `branch-protection` | Branch-beskyttelse | Sjekker om default branch har `no-rewrites`-restriksjon i Bitbucket (hindrer force push og omskriving av historikk) | Uten denne beskyttelsen kan hvem som helst rewrite historikken på default branch, noe som kan skjule endringer og ødelegge revisjonssporet. |
 | `pr-activity` | PR-praksis | Sjekker om repoet har nylige merged pull requests med reviewers de siste `PR_MONTHS` månedene (standard: 6) | Code review fanger feil og sårbarheter tidlig. Repoer uten PR-praksis har høyere risiko for feil og dårlig kodekvalitet. |
 
 ### DevOps-modenhet
