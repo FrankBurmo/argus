@@ -18,9 +18,6 @@ const DEP_FILE_DEFS = [
 // OSV alvorlighetsgrad-rangering (lavest → høyest)
 const SEVERITY_RANK = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
 
-// Standard minimumsterskel (overstyres via OSV_SEVERITY_THRESHOLD i .env)
-const DEFAULT_THRESHOLD = "MEDIUM";
-
 // In-memory cache per kjøring: "ecosystem|name|version" → vulns-array
 const vulnCache = new Map();
 
@@ -56,14 +53,6 @@ async function fetchFileContent(projectKey, repoSlug, filePath, request) {
   }
 
   return lines.join("\n");
-}
-
-/**
- * Returnerer numerisk alvorlighetsgrad-terskel fra miljøvariabel.
- */
-function getSeverityThreshold() {
-  const env = (process.env.OSV_SEVERITY_THRESHOLD || DEFAULT_THRESHOLD).toUpperCase();
-  return SEVERITY_RANK[env] ?? SEVERITY_RANK[DEFAULT_THRESHOLD];
 }
 
 /**
@@ -109,18 +98,6 @@ function getMaxSeverity(vuln) {
   }
 
   return max;
-}
-
-/**
- * Filtrerer sårbarheter basert på alvorlighetsgrad-terskel.
- * Sårbarheter uten kjent alvorlighetsgrad inkluderes (forsiktighetsprinsippet).
- */
-function filterBySeverity(vulns, threshold) {
-  return vulns.filter((v) => {
-    const max = getMaxSeverity(v);
-    // Inkluder hvis alvorlighetsgrad >= terskel, eller ukjent (0)
-    return max === 0 || max >= threshold;
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -410,7 +387,7 @@ function summarizeVuln(vuln, pkgName, pkgVersion, ecosystem) {
  * Bruker in-memory cache per kjøring for å unngå dupliserte kall.
  * Returnerer [{ package, version, ecosystem, vulns }] — kun pakker med treff.
  */
-async function queryOsvBatch(deps, severityThreshold) {
+async function queryOsvBatch(deps) {
   const BATCH_SIZE = 1000;
   const results = [];
 
@@ -456,14 +433,11 @@ async function queryOsvBatch(deps, severityThreshold) {
           (v) => vulnDetailCache.get(v.id) || v
         );
 
-        // Filtrer på alvorlighetsgrad
-        const filtered = filterBySeverity(fullVulns, severityThreshold);
-
         // Legg i cache (også tomme resultater for å unngå nye kall)
-        vulnCache.set(key, filtered);
+        vulnCache.set(key, fullVulns);
 
-        if (filtered.length > 0) {
-          results.push({ package: dep.name, version: dep.version, ecosystem: dep.ecosystem, vulns: filtered });
+        if (fullVulns.length > 0) {
+          results.push({ package: dep.name, version: dep.version, ecosystem: dep.ecosystem, vulns: fullVulns });
         }
       }
     } catch (err) {
@@ -481,7 +455,6 @@ async function queryOsvBatch(deps, severityThreshold) {
 
 async function scanRepo(projectKey, repoSlug, request) {
   const files = await listAllFiles(projectKey, repoSlug, request);
-  const threshold = getSeverityThreshold();
 
   let allDeps = [];
 
@@ -502,7 +475,7 @@ async function scanRepo(projectKey, repoSlug, request) {
 
   if (allDeps.length === 0) return { passed: null, vulnerabilities: [] };
 
-  const hits = await queryOsvBatch(allDeps, threshold);
+  const hits = await queryOsvBatch(allDeps);
 
   // Transformer hits til flat liste med kompakt sårbarhetsinformasjon
   const vulnerabilities = [];
@@ -532,11 +505,10 @@ module.exports = {
   label: "Kjente sårbarheter i avhengigheter (OSV)",
 
   /**
-   * Sjekker om repoet har tredjepartsavhengigheter med kjente sårbarheter
-   * (HIGH/CRITICAL som standard, konfigurerbart via OSV_SEVERITY_THRESHOLD).
+   * Sjekker om repoet har tredjepartsavhengigheter med kjente sårbarheter.
    *
    * Returnerer:
-   *   true  — ingen relevante sårbarheter funnet
+   *   true  — ingen sårbarheter funnet
    *   false — sårbarheter funnet
    *   null  — ingen gjenkjente avhengighetsfiler (ikke aktuelt)
    */
@@ -598,6 +570,5 @@ module.exports = {
   _parsePomXml: parsePomXml,
   _parseRequirementsTxt: parseRequirementsTxt,
   _parseGoSum: parseGoSum,
-  _filterBySeverity: filterBySeverity,
   _vulnCache: vulnCache,
 };
