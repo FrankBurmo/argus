@@ -19,7 +19,7 @@ const DEP_FILE_DEFS = [
 const SEVERITY_RANK = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
 
 // Standard minimumsterskel (overstyres via OSV_SEVERITY_THRESHOLD i .env)
-const DEFAULT_THRESHOLD = "HIGH";
+const DEFAULT_THRESHOLD = "MEDIUM";
 
 // In-memory cache per kjøring: "ecosystem|name|version" → vulns-array
 const vulnCache = new Map();
@@ -75,8 +75,10 @@ function getMaxSeverity(vuln) {
   let max = 0;
 
   // Sjekk database_specific.severity (brukt av GHSA, NVD m.fl.)
+  // GitHub bruker "MODERATE" der standard OSV bruker "MEDIUM" — normaliser
   if (vuln.database_specific && vuln.database_specific.severity) {
-    const sev = vuln.database_specific.severity.toUpperCase();
+    const raw = vuln.database_specific.severity.toUpperCase();
+    const sev = raw === "MODERATE" ? "MEDIUM" : raw;
     if (SEVERITY_RANK[sev] !== undefined) {
       max = Math.max(max, SEVERITY_RANK[sev]);
     }
@@ -84,7 +86,8 @@ function getMaxSeverity(vuln) {
 
   // Fallback: sjekk ecosystem_specific
   if (vuln.ecosystem_specific && vuln.ecosystem_specific.severity) {
-    const sev = vuln.ecosystem_specific.severity.toUpperCase();
+    const raw = vuln.ecosystem_specific.severity.toUpperCase();
+    const sev = raw === "MODERATE" ? "MEDIUM" : raw;
     if (SEVERITY_RANK[sev] !== undefined) {
       max = Math.max(max, SEVERITY_RANK[sev]);
     }

@@ -882,6 +882,7 @@ a:hover { text-decoration: underline; }
 .severity-card .sev-dot.high { background: var(--severity-high); }
 .severity-card .sev-dot.medium { background: var(--severity-medium); }
 .severity-card .sev-dot.low { background: var(--severity-low); }
+.severity-card .sev-dot.none { background: var(--severity-na); }
 .severity-card .sev-dot.unknown { background: var(--severity-na); }
 
 .severity-card .sev-count {
@@ -935,6 +936,7 @@ a:hover { text-decoration: underline; }
 .vuln-sev-badge.high { background: var(--severity-high); color: #fff; }
 .vuln-sev-badge.medium { background: var(--severity-medium); color: #1a1a2e; }
 .vuln-sev-badge.low { background: var(--severity-low); color: #1a1a2e; }
+.vuln-sev-badge.none { background: var(--severity-na); color: #fff; }
 .vuln-sev-badge.unknown { background: var(--severity-na); color: #fff; }
 
 .vuln-cvss {

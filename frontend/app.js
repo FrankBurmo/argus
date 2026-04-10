@@ -488,7 +488,7 @@ function renderEmptyVulnState() {
 }
 
 function renderVulnSeveritySummary(allVulns) {
-  const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0 };
+  const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, NONE: 0, UNKNOWN: 0 };
   for (const { vuln } of allVulns) {
     const sev = vuln.severity || "UNKNOWN";
     counts[sev] = (counts[sev] || 0) + 1;
@@ -499,6 +499,7 @@ function renderVulnSeveritySummary(allVulns) {
     { key: "HIGH", label: "High", dot: "high", count: counts.HIGH },
     { key: "MEDIUM", label: "Medium", dot: "medium", count: counts.MEDIUM },
     { key: "LOW", label: "Low", dot: "low", count: counts.LOW },
+    { key: "NONE", label: "Ingen", dot: "none", count: counts.NONE },
     { key: "UNKNOWN", label: "Ukjent", dot: "unknown", count: counts.UNKNOWN },
   ].filter(i => i.count > 0);
 
@@ -593,6 +594,7 @@ function sevLabelNo(sev) {
     case "HIGH": return "Høy";
     case "MEDIUM": return "Middels";
     case "LOW": return "Lav";
+    case "NONE": return "Ingen";
     default: return "Ukjent";
   }
 }
