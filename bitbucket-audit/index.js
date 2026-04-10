@@ -590,6 +590,18 @@ async function main() {
       }
     }
 
+    // Hent detaljer for bestått sjekker som støtter det (f.eks. hvilke lintere er i bruk)
+    for (const chk of checks) {
+      if (result.checks[chk.id] === true && typeof chk.details === "function") {
+        try {
+          const text = await chk.details(projectKey, repoSlug, request);
+          if (text) result.assessments[chk.id] = text;
+        } catch {
+          // Ignorer feil — detaljer er valgfrie
+        }
+      }
+    }
+
     // Hent detaljert sårbarhetsinformasjon fra sjekker som støtter det
     for (const chk of checks) {
       if (typeof chk.collectVulnerabilities === "function") {

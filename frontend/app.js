@@ -950,11 +950,13 @@ function showRepoDetail(project, repoSlug) {
   if (passedChecks.length > 0) {
     html += `<div class="detail-section"><h3>Bestått sjekker</h3><div class="detail-check-list">`;
     for (const chk of passedChecks) {
+      const details = repo.assessments?.[chk.id] || "";
       html += `
         <div class="detail-check-item">
           <span class="check-status status-icon status-pass">✓</span>
           <div class="check-info">
             <div class="check-name">${chk.icon} ${escapeHtml(chk.label)}</div>
+            ${details ? `<div class="check-assessment">${escapeHtml(details)}</div>` : ""}
           </div>
         </div>
       `;
@@ -1078,6 +1080,20 @@ function generateDemoData() {
       for (let v = 0; v < Math.min(numVulns, available.length); v++) {
         vulnerabilities.push({ ...available[v] });
       }
+    }
+
+    // Legg til eksempel på hvilke lintere som er i bruk for repos som bestod linting-sjekken
+    if (checks["linting"] === true) {
+      const linterCombos = [
+        "Lintere funnet: ESLint, Prettier.",
+        "Lintere funnet: Biome.",
+        "Lintere funnet: ESLint.",
+        "Lintere funnet: ESLint, Prettier, Stylelint.",
+        "Lintere funnet: Ruff.",
+        "Lintere funnet: Pylint, Ruff.",
+        "Lintere funnet: Checkstyle, EditorConfig.",
+      ];
+      assessments["linting"] = linterCombos[i % linterCombos.length];
     }
 
     repos.push({ project, repo: repoName, checks, assessments, vulnerabilities });
