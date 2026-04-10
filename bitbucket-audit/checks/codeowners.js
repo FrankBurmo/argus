@@ -40,6 +40,7 @@ module.exports = {
   },
 
   /**
+  /**
    * Returnerer hvilken CODEOWNERS-fil som ble funnet.
    * Kalles kun når run() returnerer true.
    */
