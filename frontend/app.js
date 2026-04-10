@@ -911,6 +911,7 @@ function showRepoDetail(project, repoSlug) {
               ${chk.id === "npm-audit" ? '<a href="https://docs.npmjs.com/cli/v10/commands/npm-audit" target="_blank" rel="noopener">🔗 npm audit docs</a>' : ""}
               ${chk.id === "renovate" ? '<a href="https://docs.renovatebot.com/" target="_blank" rel="noopener">🔗 Renovate docs</a>' : ""}
               ${chk.id === "secrets" ? '<a href="https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/06-Identify_Application_Entry_Points" target="_blank" rel="noopener">🔗 OWASP Testing Guide</a>' : ""}
+              ${chk.id === "codeowners" ? '<a href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners" target="_blank" rel="noopener">🔗 CODEOWNERS-dokumentasjon</a>' : ""}
             </div>
           </div>
         </div>
@@ -950,11 +951,16 @@ function showRepoDetail(project, repoSlug) {
   if (passedChecks.length > 0) {
     html += `<div class="detail-section"><h3>Bestått sjekker</h3><div class="detail-check-list">`;
     for (const chk of passedChecks) {
+      const checkDetail = repo.details?.[chk.id];
+      const extraHtml = chk.id === "codeowners" && checkDetail?.file
+        ? `<div class="check-assessment">Funnet: <code>${escapeHtml(checkDetail.file)}</code></div>`
+        : "";
       html += `
         <div class="detail-check-item">
           <span class="check-status status-icon status-pass">✓</span>
           <div class="check-info">
             <div class="check-name">${chk.icon} ${escapeHtml(chk.label)}</div>
+            ${extraHtml}
           </div>
         </div>
       `;
@@ -1080,7 +1086,14 @@ function generateDemoData() {
       }
     }
 
-    repos.push({ project, repo: repoName, checks, assessments, vulnerabilities });
+    // Legg til detaljer for sjekker som bestod og støtter det
+    const details = {};
+    if (checks["codeowners"] === true) {
+      const demoFiles = ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS", "CODEOWNERS.md"];
+      details["codeowners"] = { file: demoFiles[i % demoFiles.length] };
+    }
+
+    repos.push({ project, repo: repoName, checks, assessments, vulnerabilities, details });
   }
 
   const byCheck = {};

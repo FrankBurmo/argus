@@ -10,15 +10,46 @@ const CODEOWNERS_FILES = [
   "docs/CODEOWNERS",
 ];
 
+/**
+ * Finn første matchende CODEOWNERS-fil i repoet.
+ * Returnerer filstien som streng, eller null hvis ingen ble funnet.
+ */
+async function findCODEOWNERS(projectKey, repoSlug, request) {
+  const list = await listAllFiles(projectKey, repoSlug, request);
+  return list.find((f) => CODEOWNERS_FILES.includes(f)) ?? null;
+}
+
 module.exports = {
   id: "codeowners",
   label: "CODEOWNERS",
+
   run: async (projectKey, repoSlug, request) => {
     try {
-      const list = await listAllFiles(projectKey, repoSlug, request);
-      return list.some((f) => CODEOWNERS_FILES.includes(f));
+      return (await findCODEOWNERS(projectKey, repoSlug, request)) !== null;
     } catch {
       return false;
+    }
+  },
+
+  /**
+   * Vurder manglende CODEOWNERS-fil.
+   * Kalles kun når run() returnerer false.
+   */
+  assess: async () => {
+    return "Anbefalt — repoet mangler en CODEOWNERS-fil. Opprett en for å definere hvem som eier koden og er ansvarlig for code review.";
+  },
+
+  /**
+   * Samle tilleggsdetaljer når sjekken bestod.
+   * Returnerer { file: "funnet/sti" } eller null.
+   * Kalles kun når run() returnerer true.
+   */
+  collectDetails: async (projectKey, repoSlug, request) => {
+    try {
+      const file = await findCODEOWNERS(projectKey, repoSlug, request);
+      return file ? { file } : null;
+    } catch {
+      return null;
     }
   },
 };

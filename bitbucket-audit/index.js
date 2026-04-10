@@ -604,6 +604,21 @@ async function main() {
       }
     }
 
+    // Hent tilleggsdetaljer for sjekker som bestod og støtter det (f.eks. funnet CODEOWNERS-fil)
+    for (const chk of checks) {
+      if (result.checks[chk.id] === true && typeof chk.collectDetails === "function") {
+        try {
+          const details = await chk.collectDetails(projectKey, repoSlug, request);
+          if (details) {
+            if (!result.details) result.details = {};
+            result.details[chk.id] = details;
+          }
+        } catch {
+          // Ignorer feil — detaljer er valgfrie tilleggsinformasjon
+        }
+      }
+    }
+
     done++;
     const allPassed = checks.every((c) => result.checks[c.id] !== false);
     process.stdout.write(allPassed ? "✓" : ".");
