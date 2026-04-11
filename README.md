@@ -8,6 +8,7 @@ CLI-verktøy som kobler til Bitbucket Server/Data Center via REST API, kjører k
 
 - **[`bitbucket-audit/`](bitbucket-audit/)** — CLI-verktøyet som skanner repos og produserer JSON-rapport
 - **[`frontend/`](frontend/)** — Nettleser-dashboard for å visualisere rapporten
+- **[`docs/forbedringsplan.md`](docs/forbedringsplan.md)** — Plan for 15 nye sjekker og 17 frontend-forbedringer
 
 ---
 
