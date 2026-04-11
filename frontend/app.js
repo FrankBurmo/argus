@@ -1136,7 +1136,7 @@ function generateDemoData() {
 
 document.addEventListener("DOMContentLoaded", () => {
   // Navigasjon
-  $$(".nav-btn").forEach(btn => {
+  $$(".nav-btn[data-view]").forEach(btn => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 

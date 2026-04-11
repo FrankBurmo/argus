@@ -95,25 +95,28 @@ a:hover { text-decoration: underline; }
   z-index: 100;
 }
 
-.topbar-left,
-.topbar-brand-btn {
+.topbar-left {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.topbar-brand-btn {
-  background: none;
-  border: none;
-  padding: 0;
+#logo-home {
   cursor: pointer;
-  color: inherit;
-  text-decoration: none;
   border-radius: var(--radius-sm);
   transition: opacity var(--transition);
 }
 
-.topbar-brand-btn:hover { opacity: 0.8; }
+#logo-home:hover { opacity: 0.8; }
+
+.topbar-brand-link {
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition);
+}
+
+.topbar-brand-link:hover { opacity: 0.8; }
 
 .logo { font-size: 1.4rem; }
 
