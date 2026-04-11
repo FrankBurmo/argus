@@ -1144,8 +1144,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const logoBrand = $("#logo-home");
   if (logoBrand) logoBrand.addEventListener("click", () => switchView("summary"));
 
-  // Fil-opplasting
-  const fileInputs = [$("#file-input"), $("#file-input-landing")];
+  // Fil-opplasting (alle inputs)
+  const fileInputs = [$("#file-input"), $("#file-input-landing"), $("#file-input-landing-bottom")];
   fileInputs.forEach(input => {
     if (!input) return;
     input.addEventListener("change", (e) => {
@@ -1163,11 +1163,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Demodata
-  const demoBtn = $("#load-demo-btn");
-  if (demoBtn) {
-    demoBtn.addEventListener("click", () => loadReport(generateDemoData()));
-  }
+  // Demodata (begge knapper)
+  const demoBtns = [$("#load-demo-btn"), $("#load-demo-btn-bottom")];
+  demoBtns.forEach(btn => {
+    if (btn) btn.addEventListener("click", () => loadReport(generateDemoData()));
+  });
 
   // Detaljpanel lukking
   const detailClose = $("#detail-close");

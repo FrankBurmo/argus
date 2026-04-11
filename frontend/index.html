@@ -3,7 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Argus — Sikkerhetsrevisjon</title>
+  <title>Argus — Automatisert sikkerhetsrevisjon for Bitbucket-repoer</title>
+  <meta name="description" content="Argus reviderer alle Bitbucket-repoene i organisasjonen din mot beste praksis for sikkerhet, governance og DevOps-modenhet. 13 automatiserte sjekker — fra sårbarheter til branch-beskyttelse.">
+  <meta name="keywords" content="Bitbucket sikkerhet, sikkerhetsrevisjon, DevSecOps, OWASP, sårbarhetsskanning, branch-beskyttelse, CI/CD, kodeanalyse, hemmelighetsdeteksjon, dependency scanning">
+  <meta name="author" content="Argus">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://argus.security">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Argus — Automatisert sikkerhetsrevisjon for Bitbucket">
+  <meta property="og:description" content="Revider alle repoene i organisasjonen din mot beste praksis for sikkerhet, governance og DevOps-modenhet med 13 automatiserte sjekker.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="nb_NO">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Argus — Automatisert sikkerhetsrevisjon for Bitbucket">
+  <meta name="twitter:description" content="13 automatiserte sikkerhetssjekker for hele Bitbucket-porteføljen din.">
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Argus Code Security",
+    "description": "Automatisert sikkerhetsrevisjon for Bitbucket Server/Data Center-repoer. Kjører 13 sjekker mot beste praksis for sikkerhet, governance og DevOps-modenhet.",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Node.js 18+",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "NOK" }
+  }
+  </script>
+
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
 </head>
@@ -29,20 +59,171 @@
     </div>
   </header>
 
-  <!-- ====== Velkomst/opplasting ====== -->
-  <main id="landing" class="landing">
-    <div class="landing-card">
-      <div class="landing-icon">🛡️</div>
-      <h2>Argus — Sikkerhetsrevisjon</h2>
-      <p>Last inn en JSON-rapport fra en Argus-kjøring for å visualisere sikkerhetsstatusen til porteføljen din.</p>
-      <label class="landing-upload" for="file-input-landing">
-        <span class="upload-icon-lg">📂</span>
-        <span>Velg JSON-fil</span>
-        <span class="upload-hint">Dra og slipp, eller klikk for å velge</span>
-      </label>
-      <input type="file" id="file-input-landing" accept=".json" hidden>
-      <button id="load-demo-btn" class="demo-btn">Eller last inn demodata</button>
-    </div>
+  <!-- ====== Landingsside ====== -->
+  <main id="landing" class="landing-page">
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-glow"></div>
+      <div class="hero-content">
+        <span class="hero-eyebrow">ARGUS CODE SECURITY</span>
+        <h2 class="hero-title">Kraftig sikkerhetsrevisjon,<br>bygget for utviklere</h2>
+        <p class="hero-subtitle">Revider hele Bitbucket-porteføljen din mot beste praksis for sikkerhet, governance og DevOps-modenhet — automatisk, med 13 innebygde sjekker.</p>
+        <div class="hero-actions">
+          <label class="hero-btn hero-btn-primary" for="file-input-landing">
+            <span>📂</span> Last inn rapport
+          </label>
+          <input type="file" id="file-input-landing" accept=".json" hidden>
+          <button id="load-demo-btn" class="hero-btn hero-btn-secondary">Se demo</button>
+          <a href="docs.html" class="hero-btn hero-btn-ghost">Les dokumentasjon →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Verdiforslag — 3 kort -->
+    <section class="value-props">
+      <div class="value-card">
+        <div class="value-icon">🔍</div>
+        <h3>13 automatiserte sjekker</h3>
+        <p>Fra kjente sårbarheter og hemmeligheter i kode, til branch-beskyttelse og CI/CD-oppsett — alt i én kjøring.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">📊</div>
+        <h3>Handlingsorientert rapport</h3>
+        <p>Prioriterte tiltak med visuell oversikt. Se hvilke repoer som trenger oppmerksomhet først.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">⚡</div>
+        <h3>Enkel å ta i bruk</h3>
+        <p>CLI-verktøy som kobler seg til Bitbucket Server/Data Center via REST API. Kjør lokalt eller i pipeline.</p>
+      </div>
+    </section>
+
+    <!-- Sjekk-seksjon -->
+    <section class="checks-showcase">
+      <div class="checks-showcase-header">
+        <span class="section-eyebrow">SIKKERHET INTEGRERT I ARBEIDSFLYTEN</span>
+        <h2 class="section-title">Sjekker som dekker hele<br>sikkerhetsoverflaten</h2>
+      </div>
+
+      <div class="checks-grid">
+        <article class="check-feature-card check-feature-highlight">
+          <div class="check-feature-icon">🔑</div>
+          <h3>Hemmelighetsdeteksjon</h3>
+          <p>Fanger opp eksponerte API-nøkler, tokens og passord i kodebasen før de når produksjon.</p>
+          <span class="check-tag">secrets</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">🛡️</div>
+          <h3>OWASP Dependency-Check</h3>
+          <p>Skanner avhengigheter mot OWASP-databasen for kjente CVE-er.</p>
+          <span class="check-tag">owasp-dep-check</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">🔍</div>
+          <h3>Kjente sårbarheter (OSV)</h3>
+          <p>Sjekker pakker mot Open Source Vulnerability-databasen.</p>
+          <span class="check-tag">dep-vulns</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">🔒</div>
+          <h3>Branch-beskyttelse</h3>
+          <p>Verifiserer at hovedbrancher er beskyttet mot direkte pushes og force-pushes.</p>
+          <span class="check-tag">branch-protection</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">⚙️</div>
+          <h3>CI/CD-pipeline</h3>
+          <p>Sjekker at repoet har en fungerende CI/CD-pipeline konfigurert.</p>
+          <span class="check-tag">pipeline</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">🔄</div>
+          <h3>Renovate / Dependabot</h3>
+          <p>Verifiserer at automatisk oppdatering av avhengigheter er aktivert.</p>
+          <span class="check-tag">renovate</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">📦</div>
+          <h3>npm audit i CI</h3>
+          <p>Sikrer at npm audit kjøres som del av CI-pipelinen.</p>
+          <span class="check-tag">npm-audit</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">🧪</div>
+          <h3>Tester i CI</h3>
+          <p>Verifiserer at automatiserte tester kjøres i pipeline.</p>
+          <span class="check-tag">tests</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">✨</div>
+          <h3>Linting i CI</h3>
+          <p>Sjekker at statisk kodeanalyse er en del av byggesyklusen.</p>
+          <span class="check-tag">linting</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">👥</div>
+          <h3>CODEOWNERS</h3>
+          <p>Verifiserer at CODEOWNERS-fil finnes for eierskapstyring.</p>
+          <span class="check-tag">codeowners</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">🔀</div>
+          <h3>PR-aktivitet</h3>
+          <p>Sjekker at kodeendringer går gjennom pull requests med review.</p>
+          <span class="check-tag">pr-activity</span>
+        </article>
+        <article class="check-feature-card">
+          <div class="check-feature-icon">📅</div>
+          <h3>Vedlikeholdsstatus</h3>
+          <p>Identifiserer inaktive eller foreldede repoer som trenger oppmerksomhet.</p>
+          <span class="check-tag">stale</span>
+        </article>
+      </div>
+    </section>
+
+    <!-- Hvordan det fungerer -->
+    <section class="how-it-works">
+      <span class="section-eyebrow">SLIK FUNGERER DET</span>
+      <h2 class="section-title">Fra CLI til innsikt på minutter</h2>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h3>Kjør Argus CLI</h3>
+          <p>Koble til Bitbucket med et personlig token. Argus henter alle repoer automatisk.</p>
+          <code class="step-code">node index.js</code>
+        </div>
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h3>13 sjekker kjøres</h3>
+          <p>Parallell kjøring mot Bitbucket REST API. Sjekk hemmeligheter, sårbarheter, CI/CD og mer.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h3>Utforsk rapporten</h3>
+          <p>Last inn JSON-rapporten her for visuell analyse, prioritering og drill-down.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA / Opplasting -->
+    <section class="cta-section">
+      <div class="cta-content">
+        <h2>Klar til å revidere porteføljen din?</h2>
+        <p>Last inn en Argus-rapport for å utforske sikkerhetsstatusen visuelt, eller prøv med demodata.</p>
+        <div class="cta-upload-area">
+          <label class="landing-upload" for="file-input-landing-bottom">
+            <span class="upload-icon-lg">📂</span>
+            <span>Velg JSON-fil</span>
+            <span class="upload-hint">Dra og slipp, eller klikk for å velge</span>
+          </label>
+          <input type="file" id="file-input-landing-bottom" accept=".json" hidden>
+          <button id="load-demo-btn-bottom" class="demo-btn">Eller last inn demodata</button>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ====== Hovedinnhold ====== -->
