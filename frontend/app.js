@@ -1140,6 +1140,10 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
+  // Logo-klikk → Oversikt
+  const logoBrand = $("#logo-home");
+  if (logoBrand) logoBrand.addEventListener("click", () => switchView("summary"));
+
   // Fil-opplasting
   const fileInputs = [$("#file-input"), $("#file-input-landing")];
   fileInputs.forEach(input => {

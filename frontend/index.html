@@ -10,14 +10,15 @@
 <body>
   <!-- ====== Topplinje ====== -->
   <header class="topbar">
-    <div class="topbar-left">
+    <button class="topbar-brand-btn" id="logo-home" aria-label="Gå til Oversikt">
       <span class="logo">🛡️</span>
       <h1 class="brand">Argus <span class="brand-sub">Code Security</span></h1>
-    </div>
+    </button>
     <nav class="topbar-nav">
       <button class="nav-btn active" data-view="summary">Oversikt</button>
       <button class="nav-btn" data-view="vulnerabilities">Sårbarheter</button>
       <button class="nav-btn" data-view="repos">Repositories</button>
+      <a href="docs.html" class="nav-btn">Dokumentasjon</a>
     </nav>
     <div class="topbar-right">
       <span id="report-meta" class="meta-text"></span>
