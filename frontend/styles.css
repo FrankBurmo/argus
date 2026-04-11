@@ -284,10 +284,11 @@ a:hover { text-decoration: underline; }
 .hero-title {
   font-size: 3.2rem;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.15;
   letter-spacing: -0.03em;
   color: var(--text-primary);
   margin-bottom: 1.5rem;
+  padding-bottom: 0.1em;
   background: linear-gradient(135deg, var(--text-primary) 60%, var(--accent-purple-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -459,14 +460,10 @@ a:hover { text-decoration: underline; }
 }
 
 .check-feature-card:hover {
-  border-color: var(--border-light);
-  transform: translateY(-2px);
-}
-
-.check-feature-highlight {
   border-color: var(--accent-purple);
-  grid-column: span 1;
-  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(124, 58, 237, 0.06) 100%);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(124, 58, 237, 0.08) 100%);
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.25), 0 4px 20px rgba(124, 58, 237, 0.12);
+  transform: translateY(-2px);
 }
 
 .check-feature-icon {
