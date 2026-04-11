@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Argus — Dokumentasjon</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">🛡️</span>
+      <h1 class="brand">Argus <span class="brand-sub">Dokumentasjon</span></h1>
+    </div>
+    <nav class="topbar-nav">
+      <a href="index.html" class="nav-btn">← Tilbake til dashboardet</a>
+    </nav>
+  </header>
+
+  <div class="docs-page">
+    <aside class="docs-sidebar">
+      <nav class="docs-nav">
+        <h3 class="docs-nav-title">Innhold</h3>
+        <a href="#om-argus" class="docs-nav-link">Om Argus</a>
+        <a href="#hurtigstart" class="docs-nav-link">Hurtigstart</a>
+        <a href="#konfigurasjon" class="docs-nav-link">Konfigurasjon</a>
+        <a href="#sjekker" class="docs-nav-link">Sjekker</a>
+        <a href="#sjekk-sikkerhet" class="docs-nav-link docs-nav-sub">Sikkerhet</a>
+        <a href="#sjekk-governance" class="docs-nav-link docs-nav-sub">Governance</a>
+        <a href="#sjekk-devops" class="docs-nav-link docs-nav-sub">DevOps</a>
+        <a href="#sjekk-kodekvalitet" class="docs-nav-link docs-nav-sub">Kodekvalitet</a>
+        <a href="#dashboard" class="docs-nav-link">Dashboard</a>
+        <a href="#dashboard-oversikt" class="docs-nav-link docs-nav-sub">Oversikt</a>
+        <a href="#dashboard-sarbarheter" class="docs-nav-link docs-nav-sub">Sårbarheter</a>
+        <a href="#dashboard-repos" class="docs-nav-link docs-nav-sub">Repositories</a>
+        <a href="#rapporter" class="docs-nav-link">Rapportformat</a>
+        <a href="#sikkerhet" class="docs-nav-link">Sikkerhet og tokens</a>
+        <a href="#kildekode" class="docs-nav-link">Kildekode</a>
+      </nav>
+    </aside>
+
+    <main class="docs-main">
+
+      <!-- Om Argus -->
+      <section id="om-argus" class="docs-section">
+        <h2>Om Argus</h2>
+        <p>Argus er et CLI-verktøy som reviderer Bitbucket Server/Data Center-repositories mot beste praksis innen sikkerhet, governance og DevOps-modenhet. Verktøyet kobler til Bitbucket via REST API, kjører et sett med automatiserte sjekker på alle repos i valgte prosjekter, og genererer en detaljert rapport.</p>
+        <p>Prosjektet består av to deler:</p>
+        <ul>
+          <li><strong>bitbucket-audit/</strong> — CLI-verktøyet (Node.js) som utfører skanning og produserer rapporter</li>
+          <li><strong>frontend/</strong> — Nettleser-dashboard for visuell utforskning av resultater</li>
+        </ul>
+        <p>Dashboardet kjører 100 % i nettleseren — ingen data lastes opp til noen server. Alt forblir lokalt.</p>
+      </section>
+
+      <!-- Hurtigstart -->
+      <section id="hurtigstart" class="docs-section">
+        <h2>Hurtigstart</h2>
+        <p>Krav: Node.js 18 eller nyere.</p>
+        <div class="docs-code">
+          <pre><code>cd bitbucket-audit
+npm install
+
+# Kopier eksempelfilen og fyll inn din Bitbucket-URL:
+cp .env.example .env
+
+# Kjør — du blir spurt om token første gang:
+node index.js</code></pre>
+        </div>
+        <p>Rapporten skrives til <code>reports/audit-&lt;tidsstempel&gt;.json</code> og <code>reports/audit-&lt;tidsstempel&gt;.md</code>. Åpne JSON-filen i dashboardet for visuell analyse.</p>
+      </section>
+
+      <!-- Konfigurasjon -->
+      <section id="konfigurasjon" class="docs-section">
+        <h2>Konfigurasjon</h2>
+        <p>Argus konfigureres via miljøvariabler i <code>.env</code>-filen:</p>
+        <div class="docs-table-wrap">
+          <table class="docs-table">
+            <thead>
+              <tr><th>Variabel</th><th>Beskrivelse</th><th>Standard</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>BITBUCKET_URL</code></td><td>URL til Bitbucket-instansen (må starte med <code>https://</code>)</td><td>—</td></tr>
+              <tr><td><code>BITBUCKET_PROJECTS</code></td><td>Kommaseparert liste over prosjektnøkler å skanne</td><td>Alle</td></tr>
+              <tr><td><code>CONCURRENCY</code></td><td>Antall samtidige repos som sjekkes</td><td>5</td></tr>
+              <tr><td><code>STALE_MONTHS</code></td><td>Antall måneder uten commits før repo anses som inaktivt</td><td>12</td></tr>
+              <tr><td><code>PR_MONTHS</code></td><td>Antall måneder å se tilbake for PR-aktivitet</td><td>6</td></tr>
+              <tr><td><code>OSV_SEVERITY_THRESHOLD</code></td><td>Minimums alvorlighetsgrad for OSV-funn (<code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>, <code>CRITICAL</code>)</td><td>HIGH</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Sjekker -->
+      <section id="sjekker" class="docs-section">
+        <h2>Sjekker</h2>
+        <p>Argus kjører 13 automatiserte sjekker gruppert i fire kategorier. Hver sjekk returnerer bestått, avvik (med anbefaling), eller ikke aktuelt.</p>
+
+        <h3 id="sjekk-sikkerhet">Sikkerhet og avhengigheter</h3>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">dep-vulns</span> Kjente sårbarheter (OSV)</h4>
+          <p>Skanner avhengighetsfiler (<code>package-lock.json</code>, <code>pom.xml</code>, <code>requirements.txt</code>, <code>go.mod</code>) mot <a href="https://osv.dev/" target="_blank" rel="noopener">OSV.dev</a> API for kjente sårbarheter med alvorlighetsgrad ≥ konfigurert terskel.</p>
+          <p>Støtter npm, Maven, PyPI og Go. Bruker cache for å unngå dupliserte API-kall. Samler inn CVE-IDer, CVSS-score, berørte pakker og tilgjengelige fikser.</p>
+        </div>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">secrets</span> Hemmeligheter i kode</h4>
+          <p>Sjekker om repoet inneholder filer som typisk inneholder hemmeligheter: <code>.env</code>, <code>id_rsa</code>, <code>*.pem</code>, <code>*.key</code>, <code>credentials.json</code>, <code>.npmrc</code>, <code>.aws/credentials</code>, SSH-nøkler med mer.</p>
+          <p>Returnerer bestått dersom ingen mistenkelige filer finnes.</p>
+        </div>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">owasp-dep-check</span> OWASP Dependency-Check</h4>
+          <p>Sjekker om OWASP Dependency-Check er integrert i Jenkinsfile eller byggfiler (<code>build.gradle</code>, <code>pom.xml</code>). Vurderer også om npm audit eller annen SCA dekker behovet.</p>
+        </div>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">npm-audit</span> npm Audit</h4>
+          <p>Sjekker om <code>npm audit</code> eller <code>audit-ci</code> kjøres i CI/CD-pipeline eller som script i <code>package.json</code>.</p>
+        </div>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">renovate</span> Renovate Bot</h4>
+          <p>Sjekker om Renovate er konfigurert (<code>renovate.json</code>, <code>.renovaterc</code>, etc.). Vurderer også om Dependabot er konfigurert som alternativ.</p>
+        </div>
+
+        <h3 id="sjekk-governance">Governance og prosess</h3>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">codeowners</span> CODEOWNERS</h4>
+          <p>Sjekker om repoet har en <code>CODEOWNERS</code>-fil i en av fire aksepterte plasseringer: rot, <code>.github/</code>, <code>.bitbucket/</code>, <code>docs/</code>.</p>
+        </div>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">branch-protection</span> Branch-beskyttelse</h4>
+          <p>Sjekker om default branch har <code>no-rewrites</code>-restriksjon i Bitbucket, som hindrer force push og historikk-omskriving.</p>
+        </div>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">pr-activity</span> PR-praksis</h4>
+          <p>Sjekker om repoet har nylig mergede pull requests med minst én reviewer innenfor de siste <code>PR_MONTHS</code> månedene.</p>
+        </div>
+
+        <h3 id="sjekk-devops">DevOps-modenhet</h3>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">pipeline</span> CI/CD-pipeline</h4>
+          <p>Sjekker om repoet har en CI/CD-pipeline konfigurert: Jenkinsfile, <code>.gitlab-ci.yml</code>, <code>bitbucket-pipelines.yml</code>, <code>.circleci/config.yml</code>, GitHub Actions, med mer.</p>
+        </div>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">stale</span> Aktivt repo</h4>
+          <p>Sjekker om repoet har commit-aktivitet innenfor de siste <code>STALE_MONTHS</code> månedene. Inaktive repos kan ha uoppdagede sårbarheter.</p>
+        </div>
+
+        <h3 id="sjekk-kodekvalitet">Kodekvalitet</h3>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">readme</span> README</h4>
+          <p>Sjekker om repoet har en README-fil i roten (<code>README.md</code>, <code>README</code>, <code>README.txt</code>).</p>
+        </div>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">tests</span> Tester</h4>
+          <p>Sjekker om repoet har testmapper (<code>test/</code>, <code>tests/</code>, <code>__tests__/</code>, <code>spec/</code>) eller testfiler med kjente navnemønstre (<code>.test.js</code>, <code>.spec.ts</code>, <code>_test.go</code>, <code>Test.java</code>).</p>
+        </div>
+
+        <div class="docs-check">
+          <h4><span class="docs-check-id">linting</span> Linting/formatering</h4>
+          <p>Sjekker om repoet har konfigurert lintere eller formateringsverktøy: ESLint, Prettier, Biome, Flake8, Pylint, Checkstyle, EditorConfig, med flere (13+ verktøy støttet). Rapporterer hvilke verktøy som ble funnet.</p>
+        </div>
+      </section>
+
+      <!-- Dashboard -->
+      <section id="dashboard" class="docs-section">
+        <h2>Dashboard</h2>
+        <p>Dashboardet er en statisk nettside som leser Argus-rapporter (JSON) i nettleseren. Ingen data sendes over nett — alt prosesseres lokalt. Dra og slipp en rapportfil, eller klikk «Last inn rapport».</p>
+
+        <h3 id="dashboard-oversikt">Oversikt</h3>
+        <p>Hovedvisningen gir et overblikk over hele porteføljen:</p>
+        <ul>
+          <li><strong>KPI-kort:</strong> Totalt antall repos, repos som trenger tiltak, gjennomsnittlig sjekkdekning, antall sjekker med avvik</li>
+          <li><strong>Dekninsdiagram:</strong> Horisontale søyler per sjekk, sortert etter lavest dekning, fargekodiert (grønn ≥80 %, gul ≥40 %, rød &lt;40 %)</li>
+          <li><strong>Prosjektsammenbrudd:</strong> Klikkbare kort per Bitbucket-prosjekt — viser antall repos og avvik, fargekodet etter alvorlighetsgrad</li>
+          <li><strong>Sjekksammenbrudd:</strong> Kort per sjekk med antall avvik og dekning-%, klikkbart for filtrering</li>
+          <li><strong>Prioritert tiltaksliste:</strong> Tabell over repoene med flest anbefalte tiltak — start her for størst effekt. Viser prioritetsnivå, reponavn, avvikende sjekker som badges, og tiltakstelling</li>
+        </ul>
+
+        <h3 id="dashboard-sarbarheter">Sårbarheter</h3>
+        <p>CVE-utforsker inspirert av Datadog Code Security:</p>
+        <ul>
+          <li><strong>Sidepanel med filtre:</strong> Filtrer på alvorlighetsgrad (Critical/High/Medium/Low), økosystem (npm/Maven/PyPI/Go), prosjekt og fiks-tilgjengelighet</li>
+          <li><strong>Søkefelt:</strong> Søk etter CVE-ID, pakkenavn, reponavn eller CVSS-score</li>
+          <li><strong>Sårbarhetskort:</strong> Viser severity-badge, CVSS-score, sammendrag, berørt pakke med versjon, fiks-status, og lenker til OSV.dev/NVD/GitHub Advisories</li>
+          <li><strong>Detaljpanel:</strong> Klikk på en sårbarhet for å se fullstendig informasjon — berørte repos, referanselenker, aliaser, og fiks-versjon</li>
+        </ul>
+
+        <h3 id="dashboard-repos">Repositories</h3>
+        <p>Full matrise over alle repos med status-ikoner per sjekk:</p>
+        <ul>
+          <li><strong>✓</strong> = bestått</li>
+          <li><strong>!</strong> = avvik med anbefalt tiltak</li>
+          <li><strong>✕</strong> = avvik uten tiltak</li>
+          <li><strong>–</strong> = ikke aktuelt</li>
+        </ul>
+        <p>Klikk på en rad for å åpne repo-detaljpanelet med fullstendig vurdering per sjekk.</p>
+      </section>
+
+      <!-- Rapportformat -->
+      <section id="rapporter" class="docs-section">
+        <h2>Rapportformat</h2>
+        <p>CLI-verktøyet genererer to filer per kjøring:</p>
+        <ul>
+          <li><strong>JSON</strong> (<code>audit-&lt;tidsstempel&gt;.json</code>) — Maskinlesbar rapport for dashboardet og videre prosessering</li>
+          <li><strong>Markdown</strong> (<code>audit-&lt;tidsstempel&gt;.md</code>) — Menneskelesbar rapport egnet for Confluence, e-post, eller Git</li>
+        </ul>
+        <p>JSON-rapporten inneholder:</p>
+        <div class="docs-code">
+          <pre><code>{
+  "generatedAt": "2026-04-11T10:30:00.000Z",
+  "checks": ["renovate", "dep-vulns", ...],
+  "summary": {
+    "total": 142,
+    "byCheck": {
+      "renovate": {
+        "passed": 37,
+        "failed": 105,
+        "coveragePercent": 26.1
+      }
+    }
+  },
+  "repos": [
+    {
+      "project": "PLATTFORM",
+      "repo": "atlas-api",
+      "checks": { "renovate": true, "dep-vulns": false },
+      "assessments": { "dep-vulns": "Fant 3 HIGH-sårbarheter..." },
+      "vulnerabilities": [...]
+    }
+  ]
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- Sikkerhet -->
+      <section id="sikkerhet" class="docs-section">
+        <h2>Sikkerhet og tokens</h2>
+        <p>Argus bruker et Bitbucket Personal Access Token (PAT) for autentisering. Tokenet håndteres sikkert:</p>
+        <ul>
+          <li><strong>Windows:</strong> Kryptert med DPAPI og lagret i <code>~/.argus/token.enc</code></li>
+          <li><strong>macOS:</strong> Lagret i Keychain via <code>security</code>-kommandoen</li>
+          <li><strong>Linux:</strong> Lagret via freedesktop Secret Service (<code>secret-tool</code>)</li>
+        </ul>
+        <p>Tokenet sendes kun som <code>Bearer</code>-token i <code>Authorization</code>-headeren — aldri i URL. HTTPS er påkrevd.</p>
+        <p>Dashboardet laster kun lokale filer — ingen API-kall eller dataoverføring.</p>
+      </section>
+
+      <!-- Kildekode -->
+      <section id="kildekode" class="docs-section">
+        <h2>Kildekode</h2>
+        <p>Argus er åpen kildekode under MIT-lisensen.</p>
+        <p><a href="https://github.com/FrankBurmo/argus" target="_blank" rel="noopener">github.com/FrankBurmo/argus</a></p>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="footer">
+    <span>Generert av <a href="https://github.com/FrankBurmo/argus" target="_blank" rel="noopener">Argus</a></span>
+  </footer>
+</body>
+</html>
