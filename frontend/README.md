@@ -92,3 +92,14 @@ Frontend viser resultater for alle 13 Argus-sjekker:
 | `tests` | Tester i CI |
 | `pr-activity` | PR-aktivitet |
 | `linting` | Linting i CI |
+
+## Handlingskort (Remediation)
+
+Når en sjekk feiler for et repo, viser detaljpanelet et **handlingskort** med konkret oppskrift for å fikse avviket. Kortene inneholder:
+
+- **Alvorlighetsgrad** — `critical`, `high`, `medium` eller `low`.
+- **Hvorfor dette er viktig** — Kort begrunnelse for sikkerhet/kvalitet.
+- **Steg-for-steg-oppskrift** — Nummererte tiltak med konkrete kommandoer.
+- **Dokumentasjonslenke** — Direkte lenke til relevant ekstern dokumentasjon.
+
+Kortene er sammenleggbare (ekspanderbar via klikk) og fargekodet etter alvorlighetsgrad. Data defineres i `CHECK_REMEDIATION`-objektet i `app.js`.

@@ -641,7 +641,7 @@ https://argus.example.com/?report=https://reports.internal/argus-latest.json
 
 | # | Tiltak | Type | Innsats |
 |---|--------|------|---------|
-| 1 | Handlingskort med remediation-oppskrift per sjekk | Frontend | Liten |
+| 1 | ~~Handlingskort med remediation-oppskrift per sjekk~~ | Frontend | ✅ Ferdig |
 | 2 | `security-policy`-sjekk (SECURITY.md) | Sjekk | Liten |
 | 3 | `license`-sjekk (lisensfil) | Sjekk | Liten |
 | 4 | `contributing-guide`-sjekk | Sjekk | Liten |
