@@ -573,6 +573,203 @@ https://argus.example.com/?report=https://reports.internal/argus-latest.json
 
 ---
 
+### 9.4 SIEM-integrasjon — Sikkerhetshendelser fra kodebase til SOC
+
+**Visjon:** Argus-funn skal ikke leve isolert i et dashboard — de skal strømme inn i organisasjonens Security Operations Center (SOC) via SIEM-systemet, slik at repo-sikkerhetsstatus behandles på linje med infrastruktur- og nettverkshendelser.
+
+**Hvorfor dette er viktig:**
+- SOC-teamet ser i dag infrastruktur- og nettverksalarmer, men har **null synlighet** på kodebase-hygiene
+- En repo som mister branch-beskyttelse eller får nye CRITICAL-sårbarheter er en sikkerhetshendelse — like reell som en åpen port
+- SIEM-korrelasjon muliggjør kraftige regler: «repo X fikk ny CRITICAL-sårbarhet OG har ingen SAST OG er eksponert eksternt» → automatisk eskalering
+- Compliance-rapportering (ISO 27001, SOC 2) krever ofte at sikkerhetsfunn er **sentralt logget** — SIEM-integrasjon løser dette
+
+---
+
+#### Strategi: Tre integrasjonslag
+
+**Lag 1 — OCSF-formatert hendelsesstrøm (CLI-output)**
+
+Bruk [Open Cybersecurity Schema Framework (OCSF)](https://schema.ocsf.io/) — en åpen standard utviklet av AWS, Splunk, IBM, CrowdStrike m.fl. — for å formatere Argus-funn som strukturerte sikkerhetshendelser.
+
+OCSF-hendelsestyper for Argus-funn:
+
+| Argus-funn | OCSF-klasse | Klasse-UID | Eksempel |
+|------------|-------------|------------|----------|
+| Sjekk bestått/feilet | Compliance Finding | 2003 | `branch-protection: fail` |
+| Sårbarhet funnet | Vulnerability Finding | 2002 | `CVE-2024-1234 i lodash` |
+| Hemmelig fil oppdaget | Detection Finding | 2004 | `.env med API-nøkkel` |
+| Regresjonsalarm | Incident Finding | 2001 | `branch-protection gikk fra pass → fail` |
+
+**Fordel:** OCSF er leverandøragnostisk og støttes direkte av Splunk, Amazon Security Lake, Elastic, Google Chronicle og Microsoft Sentinel (via mapping). Argus trenger bare å produsere OCSF — og alle SIEM-er kan konsumere det.
+
+CLI-flagg: `--output-format ocsf` → skriver OCSF JSON-filer ved siden av vanlig rapport.
+
+---
+
+**Lag 2 — Push-integrasjon mot vanlige SIEM-plattformer**
+
+Konfigurerbar push etter hver audit-kjøring, via nye miljøvariabler:
+
+| SIEM | Protokoll | Miljøvariabler |
+|------|-----------|----------------|
+| **Splunk** | HTTP Event Collector (HEC) | `SIEM_TYPE=splunk`, `SIEM_URL`, `SIEM_TOKEN` |
+| **Elastic/OpenSearch** | Bulk API | `SIEM_TYPE=elastic`, `SIEM_URL`, `SIEM_INDEX` |
+| **Microsoft Sentinel** | Log Analytics Data Collector API | `SIEM_TYPE=sentinel`, `SIEM_WORKSPACE_ID`, `SIEM_SHARED_KEY` |
+| **Generisk (syslog)** | CEF over syslog | `SIEM_TYPE=cef`, `SYSLOG_HOST`, `SYSLOG_PORT` |
+| **Generisk (webhook)** | HTTP POST (JSON) | `SIEM_TYPE=webhook`, `SIEM_WEBHOOK_URL` |
+
+Eksempel `.env`:
+```
+SIEM_TYPE=splunk
+SIEM_URL=https://splunk.internal:8088/services/collector/event
+SIEM_TOKEN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+SIEM_INDEX=argus_security
+SIEM_SOURCETYPE=argus:compliance
+```
+
+CLI-bruk: `node index.js PROJ --siem` → kjører audit og pusher resultater til konfigurert SIEM.
+
+---
+
+**Lag 3 — Frontend: «Synkroniser til SIEM»-knapp**
+
+En knapp i dashboardet som:
+1. Transformerer gjeldende rapport til OCSF/CEF-hendelser
+2. Sender til konfigurert SIEM-endepunkt via proxy/backend
+3. Viser bekreftelse: «42 hendelser sendt til Splunk — [åpne i SIEM →]»
+
+Frontend-konfigurasjon (innstillingsmodal):
+```json
+{
+  "siem": {
+    "type": "splunk",
+    "url": "https://splunk.internal:8088/services/collector/event",
+    "index": "argus_security",
+    "sourcetype": "argus:compliance"
+  }
+}
+```
+
+Statusindikator i rapportvisningen: «Sist synkronisert: 2026-04-11 14:30 ✓»
+
+> **Sikkerhetsnotat:** Tokenet bør aldri lagres i frontend/localStorage. Bruk en tynn backend-proxy eller konfigurer SIEM-endepunktet til å godta forespørsler fra dashboardets domene uten token (IP-basert tilgangskontroll).
+
+---
+
+#### Innovativ funksjon: Regresjonsalarmer med forhøyet severity
+
+Argus kan automatisk generere SIEM-alarmer med **høyere severity** når en sjekk *regrederer* (gikk fra bestått til ikke-bestått mellom to kjøringer):
+
+| Hendelse | Normal severity | Regresjon-severity | SIEM-aksjon |
+|----------|----------------|-------------------|-------------|
+| `branch-protection: fail` | Medium | **High** | SOC-varsling |
+| Ny CRITICAL-sårbarhet uten SAST | High | **Critical** | Automatisk Jira-issue |
+| Secrets funnet uten secret-scanning | High | **Critical** | Umiddelbar eskalering |
+| `renovate: fail` (var pass) | Low | **Medium** | Registrering |
+
+**Implementasjon:** Sammenlign forrige og nåværende rapport. For alle sjekker som gikk fra `pass` → `fail`, øk OCSF `severity_id` med ett nivå og sett `activity_name: "Update"` i stedet for `"Create"`.
+
+**Verdi:** SOC-teamet får **handlingsbar informasjon** — ikke bare «her er status», men «noe ble verre, handle nå». Dette er fundamentalt annerledes enn et statisk compliance-dashboard.
+
+---
+
+#### Innovativ funksjon: SIEM-dashboard-maler («Argus Security Posture»)
+
+Lever ferdige, importerbare dashboard-maler for de vanligste SIEM-ene:
+
+- **Splunk:** Dashboard XML med paneler for compliance-oversikt, sårbarhetstrend, regresjonsalarmer og «worst repos»
+- **Elastic/Kibana:** Saved objects JSON med visualiseringer, index pattern og dashboard
+- **Microsoft Sentinel:** KQL-spørringer og Azure Workbook-template
+- **Grafana:** Dashboard JSON for team som bruker Grafana for observability
+
+Eksempel på paneler i SIEM-dashboardet:
+1. **Compliance Posture** — Kakediagram: % repos som består alle sjekker
+2. **Regression Timeline** — Tidslinje over regresjoner siste 30 dager
+3. **Critical Vulnerabilities** — Tabell med CRITICAL CVE-er, påvirket repo og alder
+4. **Score Distribution** — Histogram over sikkerhetspoeng
+5. **Alert Correlation** — Koblet visning: «repo med lav score + nylig deploy + eksternt eksponert»
+
+**Verdi:** Team kan importere et ferdig SIEM-dashboard på minutter og ha operasjonell synlighet fra dag én — uten å måtte bygge spørringer selv.
+
+---
+
+#### OCSF-hendelseseksempel (Compliance Finding)
+
+```json
+{
+  "class_uid": 2003,
+  "class_name": "Compliance Finding",
+  "category_uid": 2,
+  "category_name": "Findings",
+  "severity_id": 4,
+  "severity": "High",
+  "activity_id": 1,
+  "activity_name": "Create",
+  "time": 1744531200000,
+  "finding_info": {
+    "title": "Branch protection ikke konfigurert",
+    "uid": "argus:branch-protection:PROJ/my-repo",
+    "types": ["Compliance"],
+    "src_url": "https://bitbucket.example.com/projects/PROJ/repos/my-repo"
+  },
+  "compliance": {
+    "control": "branch-protection",
+    "requirements": ["OpenSSF Scorecard — Branch-Protection"],
+    "status": "Fail",
+    "status_detail": "Default branch mangler no-rewrite-beskyttelse"
+  },
+  "resources": [
+    {
+      "type": "Repository",
+      "uid": "PROJ/my-repo",
+      "name": "my-repo",
+      "labels": ["project:PROJ", "language:javascript"]
+    }
+  ],
+  "metadata": {
+    "product": {
+      "name": "Argus",
+      "vendor_name": "Internal",
+      "version": "1.0.0"
+    },
+    "version": "1.3.0",
+    "log_name": "argus-compliance"
+  }
+}
+```
+
+---
+
+#### Implementasjonsplan
+
+**Ny modul:** `siem/`
+
+| Fil | Ansvar |
+|-----|--------|
+| `siem/index.js` | Felles grensesnitt: `pushToSiem(report, prevReport, config)` |
+| `siem/ocsf.js` | Transformer Argus-rapport → OCSF-hendelser |
+| `siem/regression.js` | Sammenlign to rapporter og generer regresjonsalarmer |
+| `siem/splunk.js` | Splunk HEC-klient (HTTP POST) |
+| `siem/elastic.js` | Elasticsearch Bulk API-klient |
+| `siem/sentinel.js` | Azure Log Analytics Data Collector-klient |
+| `siem/cef.js` | CEF/Syslog-formatter |
+| `siem/webhook.js` | Generisk webhook-klient (JSON POST) |
+
+**Frontend:**
+- SIEM-konfigurasjonsmodal i innstillinger
+- «Synkroniser til SIEM»-knapp med fremdriftsindikator
+- Statuslinje: sist synkronisert, antall hendelser
+
+**Dashboard-maler:**
+- `siem/dashboards/splunk-argus-posture.xml`
+- `siem/dashboards/kibana-argus-posture.ndjson`
+- `siem/dashboards/sentinel-argus-workbook.json`
+- `siem/dashboards/grafana-argus-posture.json`
+
+**Verdi:** Argus transformeres fra et isolert auditverktøy til en **integrert del av organisasjonens security fabric**. SOC kan korrelere repo-sikkerhet med deploy-hendelser, nettverkstrafikk og incident-rapporter — og reagere proaktivt før sårbarheter utnyttes.
+
+---
+
 ## 10. Brukervennlighet og UX
 
 ### 10.1 Prosjekt-fokusert visning for tech leads
@@ -661,33 +858,39 @@ https://argus.example.com/?report=https://reports.internal/argus-latest.json
 | 13 | Prosjekt-fokusert visning for tech leads | Frontend | Medium |
 | 14 | Rapport-sammenligning over tid (trend) | Frontend | Medium |
 | 15 | `secret-scanning-config`-sjekk | Sjekk | Medium |
+| 16 | SIEM-push: OCSF-formatert output (`--output-format ocsf`) | Backend | Medium |
+| 17 | SIEM-push: Splunk HEC / Webhook-integrasjon (`--siem`) | Backend | Medium |
 
 ### Fase 3 — Medium verdi, variabel innsats (6–12 uker)
 
 | # | Tiltak | Type | Innsats |
 |---|--------|------|---------|
-| 16 | `binary-artifacts`-sjekk | Sjekk | Medium |
-| 17 | `docker-security`-sjekk | Sjekk | Stor |
-| 18 | `test-coverage-config`-sjekk | Sjekk | Medium |
-| 19 | `documentation-quality`-sjekk | Sjekk | Medium |
-| 20 | Leaderboard (forbedring + toppscore) | Frontend | Medium |
-| 21 | Jira/Bitbucket-issue-generering | Frontend | Medium |
-| 22 | Slack/Teams-integrasjon | Backend | Medium |
-| 23 | URL-basert rapport-lasting | Frontend | Liten |
+| 18 | `binary-artifacts`-sjekk | Sjekk | Medium |
+| 19 | `docker-security`-sjekk | Sjekk | Stor |
+| 20 | `test-coverage-config`-sjekk | Sjekk | Medium |
+| 21 | `documentation-quality`-sjekk | Sjekk | Medium |
+| 22 | Leaderboard (forbedring + toppscore) | Frontend | Medium |
+| 23 | Jira/Bitbucket-issue-generering | Frontend | Medium |
+| 24 | Slack/Teams-integrasjon | Backend | Medium |
+| 25 | URL-basert rapport-lasting | Frontend | Liten |
+| 26 | SIEM: Regresjonsalarmer (diff mellom rapporter) | Backend | Medium |
+| 27 | SIEM: Elastic/Sentinel-integrasjon + CEF/syslog | Backend | Medium |
+| 28 | SIEM: Frontend «Synkroniser til SIEM»-knapp | Frontend | Medium |
+| 29 | SIEM: Ferdige dashboard-maler (Splunk/Kibana/Sentinel) | Ressurser | Medium |
 
 ### Fase 4 — Langsiktige forbedringer
 
 | # | Tiltak | Type | Innsats |
 |---|--------|------|---------|
-| 24 | `gitignore`-sjekk | Sjekk | Medium |
-| 25 | `multi-env-config`-sjekk | Sjekk | Medium |
-| 26 | `issue-tracking`-sjekk | Sjekk | Medium |
-| 27 | Målsetting og milepæler | Frontend | Medium |
-| 28 | Badges/shields-generering | Frontend | Liten |
-| 29 | Flerdimensjonal filtrering (team, teknologi) | Frontend | Medium |
-| 30 | Tastaturnavigasjon og tilgjengelighet | Frontend | Medium |
-| 31 | PDF-eksport | Frontend | Medium |
-| 32 | Planlagt kjøring med CI-mal | Backend | Medium |
+| 30 | `gitignore`-sjekk | Sjekk | Medium |
+| 31 | `multi-env-config`-sjekk | Sjekk | Medium |
+| 32 | `issue-tracking`-sjekk | Sjekk | Medium |
+| 33 | Målsetting og milepæler | Frontend | Medium |
+| 34 | Badges/shields-generering | Frontend | Liten |
+| 35 | Flerdimensjonal filtrering (team, teknologi) | Frontend | Medium |
+| 36 | Tastaturnavigasjon og tilgjengelighet | Frontend | Medium |
+| 37 | PDF-eksport | Frontend | Medium |
+| 38 | Planlagt kjøring med CI-mal | Backend | Medium |
 
 ---
 
@@ -703,6 +906,9 @@ https://argus.example.com/?report=https://reports.internal/argus-latest.json
 | [Backstage Software Catalog](https://backstage.io/docs/features/software-catalog/) | Developer portal-prinsipper for organisering av tjenester |
 | [OWASP Node.js Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Nodejs_Security_Cheat_Sheet.html) | Best practices for sikkerhetssjekker |
 | [OSSF SBOM Everywhere SIG](https://github.com/ossf/SBOM-everywhere) | Standards for SBOM-navngivning og plassering |
+| [OCSF — Open Cybersecurity Schema Framework](https://schema.ocsf.io/) | Åpen standard for strukturerte sikkerhetshendelser (brukt av Splunk, AWS, IBM m.fl.) |
+| [Splunk HTTP Event Collector](https://docs.splunk.com/Documentation/Splunk/latest/Data/UsetheHTTPEventCollector) | Dokumentasjon for push av hendelser til Splunk via HEC |
+| [Elastic Common Schema (ECS)](https://www.elastic.co/guide/en/ecs/current/index.html) | Fellesformat for sikkerhetshendelser i Elastic Stack |
 
 ---
 
