@@ -22,9 +22,14 @@
 9. [Integrasjon og distribusjon](#9-integrasjon-og-distribusjon)
 10. [Brukervennlighet og UX](#10-brukervennlighet-og-ux)
 
+**Del C — Sikkerhets-awareness og organisasjonskultur**
+11. [Kontekstuell sikkerhetslæring](#11-kontekstuell-sikkerhetslæring)
+12. [Policy Gates — Sikkerhetsterskel i CI/CD](#12-policy-gates--sikkerhetsterskel-i-cicd)
+13. [CISO-rapportering, MTTR og risikomodenhet](#13-ciso-rapportering-mttr-og-risikomodenhet)
+
 **Prioritering**
-11. [Prioritert tiltaksliste](#11-prioritert-tiltaksliste)
-12. [Referanser](#12-referanser)
+14. [Prioritert tiltaksliste](#14-prioritert-tiltaksliste)
+15. [Referanser](#15-referanser)
 
 ---
 
@@ -832,7 +837,222 @@ Eksempel på paneler i SIEM-dashboardet:
 
 ---
 
-## 11. Prioritert tiltaksliste
+# Del C — Sikkerhets-awareness og organisasjonskultur
+
+## 11. Kontekstuell sikkerhetslæring
+
+### 11.1 Læringskort per sjekk — «Hvorfor er dette viktig?»
+
+**Hva:** Koble hvert avvik til et forklaringskort som svarer på *hvorfor* dette er et sikkerhetsproblem — ikke bare *hva* som er galt og *hvordan* det fikses. Uten denne konteksten vil mange utviklere bare «fikse det grønne lyset» uten å internalisere sikkerheten.
+
+**Innhold per kort:**
+
+| Felt | Eksempel (`branch-protection`) |
+|------|--------------------------------|
+| **Risikoscenario** | «En kompromittert utviklerkonto kan pushe skadelig kode direkte til main uten review» |
+| **Kjent hendelse** | SolarWinds (2020): kompromittert build-pipeline uten tilstrekkelig branch-policy |
+| **Estimert fiksetid** | ~15 minutter |
+| **Risikonivå** | Høy |
+| **Compliance-kobling** | NIST CSF PR.AC-4, ISO 27001 A.12.1 |
+
+**Implementasjon:** Hvert sjekk-objekt eksporterer valgfri `awareness`-struct:
+
+```javascript
+module.exports = {
+  id: "branch-protection",
+  awareness: {
+    risk: "high",
+    scenario: "En kompromittert konto kan pushe direkte til main uten review.",
+    realWorldExample: "SolarWinds-angrepet (2020) utnyttet en kompromittert build-pipeline.",
+    estimatedFix: "15 min",
+    references: ["https://owasp.org/www-project-top-ten/"]
+  },
+  run: async (projectKey, repoSlug, request) => { /* ... */ }
+};
+```
+
+Frontend: Expanderbar «Lær mer»-seksjon under hvert avvik i repo-detaljvisningen.
+
+**Verdi:** Forståelse driver varig endring. Utviklere som forstår *hvorfor* branch-protection hindrer supply chain-angrep, vedlikeholder konfigurasjonen aktivt — ikke bare som en engangsøvelse.
+
+---
+
+### 11.2 Kobling til opplæringsplattformer og intern wiki
+
+**Hva:** Koble Argus-funn direkte til organisasjonens læringsressurser.
+
+- **Konfigurerbar wiki-URL:** `LEARNING_BASE_URL=https://wiki.example.com/security/` → hvert funn linker automatisk til `wiki.example.com/security/{check-id}`
+- **OWASP-referanser:** Statisk mapping av `dep-vulns` → OWASP Top 10 A06, `secrets` → A02, `sast` → A03, etc.
+- **Interne kurs:** Lenke til relevant modul i LMS/e-læring-system
+- **Compliance-mapping:** Vis hvilke ISO 27001- eller NIST CSF-kontroller sjekken dekker
+
+**Implementasjon:** Statisk kart i ny fil `checks/awareness-map.js`:
+
+```javascript
+module.exports = {
+  "branch-protection": { iso27001: ["A.12.1.2"], nistCsf: ["PR.AC-4"] },
+  "dep-vulns":         { owasp: "A06:2021",  iso27001: ["A.12.6.1"], nistCsf: ["ID.RA-1"] },
+  "secrets":           { owasp: "A02:2021",  iso27001: ["A.9.4.3"],  nistCsf: ["PR.AC-1"] }
+};
+```
+
+**Verdi:** Gjør sikkerhetsfunn relevante for review-team, revisorer og compliance-ansvarlige — ikke bare for utviklere.
+
+---
+
+### 11.3 Sikkerhetsbevissthet for AI-generert kode
+
+**Hva:** AI-kodeverktøy (GitHub Copilot, Claude, Cursor m.fl.) introduserer risikoer tradisjonelle sjekker ikke fanger:
+
+- **Hallusinerte pakkenavn** → typosquatting- og dependency confusion-risiko
+- **Usikre kode-mønstre** kopiert ukritisk fra LLM-treningsdata
+- **Svekket menneskelig review-disiplin** når AI genererer store kodeblokker
+
+**Tiltak:**
+- Ny sjekk: `ai-package-integrity` — krysssjekker at pakkenavn i `package.json` faktisk finnes i npm-registeret via `GET https://registry.npmjs.org/{name}` (fanger hallusinerte avhengigheter)
+- Innsiktsbanner i dashboardet: «Bruker teamet AI-kodeverktøy? AI-generert kode krever samme sikkerhetsgjennomgang som menneskelig kode — og noen ganger mer.»
+- Kobing til [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/) for fremtidig utvidelse
+
+**Verdi:** Fremtidssikrer Argus for det nye trusselbildet der LLM-hallusinering og supply chain via AI-generert kode er reelle og voksende risikoer.
+
+---
+
+## 12. Policy Gates — Sikkerhetsterskel i CI/CD
+
+### 12.1 Argus som CI/CD-håndhever
+
+**Hva:** Legg til en håndhevelses-modus der Argus returnerer exit code 1 (og feiler bygget) hvis et prosjekt bryter definerte sikkerhetspolicyer. Konverterer Argus fra passivt rapporteringsverktøy til aktiv sikkerhetsbarriere.
+
+**Eksempel `argus-policy.json`:**
+
+```json
+{
+  "minimumScore": 60,
+  "requiredChecks": ["branch-protection", "secrets", "pipeline"],
+  "forbiddenFindings": [
+    { "check": "dep-vulns", "maxSeverity": "CRITICAL" },
+    { "check": "secrets",   "failOnAny": true }
+  ],
+  "gracePeriodDays": 14,
+  "exemptions": [
+    { "repoPattern": "sandbox-*", "reason": "Utviklingssandbox, ikke produksjon" }
+  ]
+}
+```
+
+```
+node index.js PROJ --enforce --policy argus-policy.json
+```
+
+- Exit 0 → alle repos overholder policy, pipeline fortsetter
+- Exit 1 → policy-brudd, rapport med detaljer og remediation-lenker
+
+**Verdi:** Det kraftigste enkelttiltaket for security awareness. Teams bryr seg om sikkerhet når den blokkerer deployment. SANS Institute og Gartner anbefaler policy gates som primærdriver for «shift left»-sikkerhet.
+
+---
+
+### 12.2 Gradvis innstramming (Ratchet-mekanisme)
+
+**Hva:** For å unngå «security shock» hos team som plutselig møter nye krav, innfør en forutsigbar ratchet-overgang:
+
+| Fase | Varighet | Konsekvens |
+|------|----------|------------|
+| Varslingsfase | Uke 1–2 | Bygg passerer; rapport med advarsler sendes til team |
+| Myk håndhevelse | Uke 3–4 | Bygg passerer; kommentar postes automatisk på PR |
+| Hard håndhevelse | Uke 5+ | Bygg feiler ved policy-brudd |
+
+**Ratchet-prinsipp:** Minimumsscore kan økes kvartalvis basert på organisasjonsmål — aldri senkes. Eksisterende godkjente repos «låses» til sitt nåværende score-nivå.
+
+**Verdi:** Kombinert med læringskortene (11.1) vet teamene nøyaktig hva de må gjøre og hvorfor, lenge før bygget faktisk feiler. Overgangen blir forutsigbar, ikke sjokkerende.
+
+---
+
+### 12.3 Bitbucket Server merge checks (langsiktig)
+
+**Hva:** En Bitbucket Server-plugin som eksponerer utvalgte Argus-sjekker som native merge checks — direkte i Bitbucket, uten ekstern CI-pipeline.
+
+- Merge til default branch blokkeres hvis repo feiler konfigurerbare «must-pass»-sjekker (`secrets`, `branch-protection` etc.)
+- Konfigurerbart per Bitbucket-prosjekt fra admin-UI
+- Inline feedback direkte i pull request-visningen
+
+**Verdi:** Lavest mulig friksjon — utvikleren ser hva som mangler i sin PR, fikser det der og da, og PR-en godtas. Sikker kode som en naturlig del av pull request-arbeidsflyten.
+
+---
+
+## 13. CISO-rapportering, MTTR og risikomodenhet
+
+### 13.1 Eksekutiv sikkerhetsoppsummering
+
+**Hva:** En dedikert rapportmodus (`--report-mode executive`) for CISO, CTO og sikkerhetsledergruppen — aggregerer tekniske funn til business-risk-innsikt uten teknisk støy.
+
+**Nøkkelinnhold:**
+
+| Panel | Innhold |
+|-------|---------|
+| Organisatorisk sikkerhetspoeng | Vektet gjennomsnitt 0–100, fargekodert og trendlinjet |
+| Risikokartlegging | Antall repos i rød/gul/grønn sone |
+| Top 5 organisasjonsrisici | Sjekk-kategorier med høyest failure rate × severity-vekt |
+| Kvartalstrend | Graf: gjennomsnittlig score og andel compliant repos |
+| Åpne kritiske funn | CRITICAL CVE-er eldre enn 30 dager uten tildelt eier/fix |
+| Compliance-status | Mapping mot ISO 27001 A.12/A.14 eller NIST CSF-funksjoner |
+
+**Eksport:** PDF med organisasjons-branding, klar for styrepresentasjon eller ekstern revisjon.
+
+**Verdi:** Security awareness starter på toppen. En rapport CISO kan presentere for styret driver organisatorisk forpliktelse og ressursallokering — noe tekniske dashboards alene aldri oppnår.
+
+---
+
+### 13.2 MTTR — Mean Time to Remediate
+
+**Hva:** Det viktigste enkeltmålet på om sikkerhetsprogrammet faktisk endrer adferd. Mål tid fra et funn *oppdages* (første rapport med avviket) til det er *lukket* (første rapport uten).
+
+| Severity | God MTTR | Varsle ved |
+|----------|----------|------------|
+| Critical | < 24 timer | > 72 timer |
+| High | < 7 dager | > 14 dager |
+| Medium | < 30 dager | > 60 dager |
+| Low | < 90 dager | > 180 dager |
+
+**Visning:**
+- MTTR per prosjekt, per sjekk-kategori og per severity — som nøkkeltall og trendgraf
+- MTTR-kolonne i repo-matrisen og aggregert MTTR i eksekutivrapporten
+- Automatisk SIEM-alarm / Slack-varsel ved brudd på MTTR-terskel
+
+**Verdi:** Uten MTTR vet ikke sikkerhetsleder om awareness-programmet gir reell effekt. MTTR er bindeleddet mellom «vi fant et problem» og «vi kan dokumentere at vi løste det raskt».
+
+---
+
+### 13.3 Formell risikoaksept-prosess
+
+**Hva:** Erstatt «evig røde repos» med en styrt prosess for bevisst, tidsavgrenset risikoaksept.
+
+**Flyt:**
+1. Teamleder registrerer aksept i `argus-risk-accept.json` i repoet (eller via Jira-issue med label `argus-risk-accepted`)
+2. Argus markerer funnet som **Akseptert risiko** (ikke **Avvik**) med eier og akseptdato
+3. Aksepten utløper automatisk etter X dager — konfigurerbar per severity
+4. CISO-rapporten skiller tydelig mellom «Åpent avvik», «Akseptert risiko (utløper DD.MM)» og «Under utbedring»
+5. Utløpt aksept → automatisk re-eskalering via SIEM/Slack/e-post
+
+```json
+// argus-risk-accept.json
+{
+  "accepted": [
+    {
+      "check": "dep-vulns",
+      "cve": "CVE-2024-1234",
+      "reason": "Ingen tilgjengelig patch. Ekstern tilgang blokkert via WAF.",
+      "owner": "alice@example.com",
+      "acceptedUntil": "2026-07-01"
+    }
+  ]
+}
+```
+
+**Verdi:** Uten en formell prosess er risikoaksept usynlig — en «fixed it by ignoring it»-kultur. Med prosessen gjør organisasjonen et dokumentert, tidsavgrenset, navngitt valg. Det alene øker awareness og juridisk ansvarlighet betraktelig.
+
+---
+
+## 14. Prioritert tiltaksliste
 
 ### Fase 1 — Høy verdi, lav innsats (1–3 uker)
 
@@ -891,10 +1111,19 @@ Eksempel på paneler i SIEM-dashboardet:
 | 36 | Tastaturnavigasjon og tilgjengelighet | Frontend | Medium |
 | 37 | PDF-eksport | Frontend | Medium |
 | 38 | Planlagt kjøring med CI-mal | Backend | Medium |
+| 39 | Læringskort per sjekk (`awareness`-struct + «Lær mer» i frontend) | Backend + Frontend | Liten |
+| 40 | Wiki/LMS-kobling per sjekk (`LEARNING_BASE_URL` + `awareness-map.js`) | Backend | Liten |
+| 41 | CISO eksekutivrapport (PDF, aggregert risiko, ISO/NIST-mapping) | Frontend | Medium |
+| 42 | Policy Gates CLI (`--enforce --policy argus-policy.json`) | Backend | Medium |
+| 43 | MTTR-sporing og dashboard-visning | Frontend | Medium |
+| 44 | Risikoaksept-prosess (`argus-risk-accept.json`) | Backend + Frontend | Medium |
+| 45 | Ratchet-mekanisme (gradvis policy-innstramning) | Backend | Medium |
+| 46 | `ai-package-integrity`-sjekk (hallusinerte npm-pakker) | Sjekk | Medium |
+| 47 | Bitbucket Server merge checks-plugin | Plugin | Stor |
 
 ---
 
-## 12. Referanser
+## 15. Referanser
 
 | Kilde | Beskrivelse |
 |-------|-------------|
@@ -909,6 +1138,10 @@ Eksempel på paneler i SIEM-dashboardet:
 | [OCSF — Open Cybersecurity Schema Framework](https://schema.ocsf.io/) | Åpen standard for strukturerte sikkerhetshendelser (brukt av Splunk, AWS, IBM m.fl.) |
 | [Splunk HTTP Event Collector](https://docs.splunk.com/Documentation/Splunk/latest/Data/UsetheHTTPEventCollector) | Dokumentasjon for push av hendelser til Splunk via HEC |
 | [Elastic Common Schema (ECS)](https://www.elastic.co/guide/en/ecs/current/index.html) | Fellesformat for sikkerhetshendelser i Elastic Stack |
+| [NIST Cybersecurity Framework (CSF)](https://www.nist.gov/cyberframework) | Rammeverk for risikostyring — Identifisér / Beskytt / Oppdag / Responder / Gjenopprett |
+| [ISO/IEC 27001:2022 — Annex A](https://www.iso.org/standard/27001) | Kontrollsett for informasjonssikkerhetsstyring, koblet til Argus-sjekker via awareness-map |
+| [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/) | Topp 10 sikkerhetsrisikoer for LLM-applikasjoner og AI-generert kode |
+| [SANS «Shift Left» Security](https://www.sans.org/blog/shift-left-and-embrace-devsecops/) | Policy gates og DevSecOps-prinsipper for tidlig sikkerhetshåndhevelse |
 
 ---
 
