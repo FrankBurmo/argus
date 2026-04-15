@@ -597,19 +597,24 @@ let vulnFilters = {
 
 /**
  * Bygg en flat, deduplisert liste over alle sårbarheter på tvers av repos.
- * Grupperer per vuln-ID og pakke+versjon, og sporer berørte repos.
+ * Grupperer per vuln-ID (CVE), og sporer berørte repos med versjonsinfo.
  */
 function buildVulnIndex() {
-  const index = new Map(); // key: "vulnId|pkg|version" → { vuln, repos: [{project, repo}] }
+  const index = new Map(); // key: vulnId → { vuln, repos: [{project, repo, version}] }
 
   for (const repo of report.repos) {
     if (!repo.vulnerabilities || repo.vulnerabilities.length === 0) continue;
     for (const v of repo.vulnerabilities) {
-      const key = `${v.id}|${v.package}|${v.version}`;
-      if (!index.has(key)) {
-        index.set(key, { vuln: v, repos: [] });
+      if (!index.has(v.id)) {
+        index.set(v.id, { vuln: v, repos: [] });
       }
-      index.get(key).repos.push({ project: repo.project, repo: repo.repo });
+      const entry = index.get(v.id);
+      // Oppdater vuln med høyest tilgjengelig info (fiks, score etc.)
+      if (v.fixedIn && !entry.vuln.fixedIn) entry.vuln.fixedIn = v.fixedIn;
+      if (v.cvssScore && (!entry.vuln.cvssScore || v.cvssScore > entry.vuln.cvssScore)) {
+        entry.vuln.cvssScore = v.cvssScore;
+      }
+      entry.repos.push({ project: repo.project, repo: repo.repo, version: v.version });
     }
   }
 
@@ -797,9 +802,9 @@ function renderVulnList(allVulns) {
   if (searchTerm) {
     filtered = filtered.filter(({ vuln, repos }) => {
       const searchable = [
-        vuln.id, vuln.cveId, vuln.summary, vuln.package, vuln.version,
+        vuln.id, vuln.cveId, vuln.summary, vuln.package,
         vuln.ecosystem, ...(vuln.aliases || []),
-        ...repos.map(r => `${r.project} ${r.repo}`),
+        ...repos.map(r => `${r.project} ${r.repo} ${r.version}`),
       ].join(" ").toLowerCase();
       return searchable.includes(searchTerm);
     });
@@ -826,11 +831,12 @@ function renderVulnList(allVulns) {
       ? `https://osv.dev/vulnerability/${encodeURIComponent(vuln.cveId)}`
       : `https://osv.dev/vulnerability/${encodeURIComponent(vuln.id)}`;
 
-    const uniqueRepoCount = repos.length;
+    const uniqueRepoCount = new Set(repos.map(r => `${r.project}|${r.repo}`)).size;
     const uniqueProjectCount = new Set(repos.map(r => r.project)).size;
+    const uniqueVersions = [...new Set(repos.map(r => r.version))].sort();
 
     html += `
-      <div class="vuln-row" onclick="showVulnDetail('${escapeHtml(vuln.id)}', '${escapeHtml(vuln.package)}', '${escapeHtml(vuln.version)}')">
+      <div class="vuln-row" onclick="showVulnDetail('${escapeHtml(vuln.id)}')">
         <div class="vuln-row-severity">
           <span class="vuln-sev-badge ${sevClass}">${sevLabelNo(vuln.severity || "UNKNOWN")}</span>
           ${cvssStr ? `<span class="vuln-cvss">${cvssStr}</span>` : ""}
@@ -839,10 +845,11 @@ function renderVulnList(allVulns) {
           <div class="vuln-title">${escapeHtml(vuln.summary)}</div>
           <div class="vuln-meta">
             <a class="vuln-cve" href="${cveUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(cveDisplay)}</a>
-            <span class="vuln-pkg-badge ${ecoClass(vuln.ecosystem)}">📦 ${escapeHtml(vuln.package)} ${escapeHtml(vuln.version)}</span>
+            <span class="vuln-pkg-badge ${ecoClass(vuln.ecosystem)}">📦 ${escapeHtml(vuln.package)}</span>
           </div>
           <div class="vuln-tags">
             ${vuln.fixedIn ? `<span class="vuln-tag fix-available">✅ Fiks: ${escapeHtml(vuln.fixedIn)}</span>` : `<span class="vuln-tag no-fix">Ingen fiks kjent</span>`}
+            <span class="vuln-tag">${uniqueVersions.length} versjon${uniqueVersions.length > 1 ? "er" : ""}</span>
             ${(vuln.aliases || []).filter(a => a !== vuln.cveId && a !== vuln.id).slice(0, 2).map(a =>
               `<a class="vuln-tag" style="color: var(--text-link); text-decoration: none;" href="https://osv.dev/vulnerability/${encodeURIComponent(a)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(a)}</a>`
             ).join("")}
@@ -872,10 +879,9 @@ function toggleVulnFilter(group, value) {
   renderExplorer();
 }
 
-function showVulnDetail(vulnId, pkg, version) {
+function showVulnDetail(vulnId) {
   const allVulns = buildVulnIndex();
-  const key = `${vulnId}|${pkg}|${version}`;
-  const entry = allVulns.find(e => `${e.vuln.id}|${e.vuln.package}|${e.vuln.version}` === key);
+  const entry = allVulns.find(e => e.vuln.id === vulnId);
   if (!entry) return;
 
   const { vuln, repos } = entry;
@@ -888,6 +894,16 @@ function showVulnDetail(vulnId, pkg, version) {
   const ghsaUrl = (vuln.aliases || []).find(a => a.startsWith("GHSA-"))
     ? `https://github.com/advisories/${(vuln.aliases || []).find(a => a.startsWith("GHSA-"))}`
     : null;
+
+  // Grupper repos etter prosjekt, og vis versjon per repo
+  const byProject = {};
+  for (const r of repos) {
+    if (!byProject[r.project]) byProject[r.project] = [];
+    byProject[r.project].push(r);
+  }
+
+  const uniqueRepoCount = new Set(repos.map(r => `${r.project}|${r.repo}`)).size;
+  const uniqueVersions = [...new Set(repos.map(r => r.version))].sort();
 
   let html = `
     <div class="detail-header">
@@ -904,20 +920,28 @@ function showVulnDetail(vulnId, pkg, version) {
       <h3>Pakke</h3>
       <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
         <span class="vuln-pkg-badge ${ecoClass(vuln.ecosystem)}" style="font-size: 0.85rem; padding: 0.3rem 0.6rem;">
-          📦 ${escapeHtml(vuln.package)} ${escapeHtml(vuln.version)}
+          📦 ${escapeHtml(vuln.package)}
         </span>
         <span style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(vuln.ecosystem || "")}</span>
         ${vuln.fixedIn ? `<span class="vuln-tag fix-available" style="font-size: 0.8rem;">✅ Oppgrader til ${escapeHtml(vuln.fixedIn)}</span>` : `<span class="vuln-tag no-fix" style="font-size: 0.8rem;">Ingen kjent fiks</span>`}
       </div>
+      <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
+        Sårbare versjoner funnet: ${uniqueVersions.map(v => `<code>${escapeHtml(v)}</code>`).join(", ")}
+      </div>
     </div>
 
     <div class="detail-section">
-      <h3>Oppdaget i ${repos.length} repositor${repos.length === 1 ? "y" : "ies"}</h3>
+      <h3>Oppdaget i ${uniqueRepoCount} repositor${uniqueRepoCount === 1 ? "y" : "ies"}</h3>
       <div class="vuln-detail-repos">
-        ${repos.map(r => `
-          <div class="vuln-detail-repo-item" onclick="showRepoDetail('${escapeHtml(r.project)}', '${escapeHtml(r.repo)}')">
-            <span class="project-tag">${escapeHtml(r.project)}</span>
-            <span class="repo-name">${escapeHtml(r.repo)}</span>
+        ${Object.entries(byProject).map(([proj, projRepos]) => `
+          <div style="margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">${escapeHtml(proj)}</div>
+            ${projRepos.map(r => `
+              <div class="vuln-detail-repo-item" onclick="showRepoDetail('${escapeHtml(r.project)}', '${escapeHtml(r.repo)}')">
+                <span class="repo-name">${escapeHtml(r.repo)}</span>
+                <code style="font-size: 0.75rem; color: var(--text-muted); margin-left: auto;">${escapeHtml(r.version)}</code>
+              </div>
+            `).join("")}
           </div>
         `).join("")}
       </div>

@@ -1,0 +1,26 @@
+{
+  "name": "osv-local",
+  "version": "1.0.0",
+  "description": "Lokal OSV-sårbarhetsdatabase med SQLite — offline-erstatning for api.osv.dev",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "sql.js": "^1.11.0",
+    "semver": "^7.6.3"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^20.0.0",
+    "@types/semver": "^7.5.8",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

@@ -3,6 +3,17 @@
 const https = require("https");
 const { listAllFiles } = require("./utils");
 
+// Offline OSV-modus via lokal SQLite-database
+const OSV_OFFLINE = (process.env.OSV_OFFLINE || "").toLowerCase() === "true";
+let osvLocal = null;
+if (OSV_OFFLINE) {
+  try {
+    osvLocal = require("../../osv-local/dist");
+  } catch (err) {
+    console.error("[depVulns] Kunne ikke laste osv-local — kjør 'npm run build' i osv-local/:", err.message);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Konfigurasjon
 // ---------------------------------------------------------------------------
@@ -489,6 +500,44 @@ function summarizeVuln(vuln, pkgName, pkgVersion, ecosystem) {
 }
 
 /**
+ * Spør OSV lokalt (offline) om sårbarheter for en liste avhengigheter.
+ * Bruker osv-local-modulen med lokal SQLite-database.
+ * Returnerer [{ package, version, ecosystem, vulns }] — kun pakker med treff.
+ */
+async function queryOsvLocal(deps) {
+  if (!osvLocal) throw new Error("osv-local er ikke tilgjengelig");
+
+  const results = [];
+
+  for (const dep of deps) {
+    const key = `${dep.ecosystem}|${dep.name}|${dep.version}`;
+    if (vulnCache.has(key)) {
+      const cached = vulnCache.get(key);
+      if (cached.length > 0) {
+        results.push({ package: dep.name, version: dep.version, ecosystem: dep.ecosystem, vulns: cached });
+      }
+      continue;
+    }
+
+    try {
+      const response = await osvLocal.query({
+        package: { name: dep.name, ecosystem: dep.ecosystem },
+        version: dep.version,
+      });
+      const vulns = response.vulns || [];
+      vulnCache.set(key, vulns);
+      if (vulns.length > 0) {
+        results.push({ package: dep.name, version: dep.version, ecosystem: dep.ecosystem, vulns });
+      }
+    } catch (err) {
+      console.error(`[depVulns] Lokal OSV-feil for ${dep.name}@${dep.version}: ${err.message}`);
+    }
+  }
+
+  return results;
+}
+
+/**
  * Spør OSV.dev om sårbarheter for en liste avhengigheter.
  * Bruker in-memory cache per kjøring for å unngå dupliserte kall.
  * Returnerer [{ package, version, ecosystem, vulns }] — kun pakker med treff.
@@ -581,7 +630,10 @@ async function scanRepo(projectKey, repoSlug, request) {
 
   if (allDeps.length === 0) return { passed: null, vulnerabilities: [] };
 
-  const hits = await queryOsvBatch(allDeps);
+  // Velg online (osv.dev API) eller offline (lokal SQLite) basert på OSV_OFFLINE
+  const hits = OSV_OFFLINE && osvLocal
+    ? await queryOsvLocal(allDeps)
+    : await queryOsvBatch(allDeps);
 
   // Transformer hits til flat liste med kompakt sårbarhetsinformasjon
   const vulnerabilities = [];
