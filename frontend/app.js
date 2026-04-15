@@ -967,10 +967,190 @@ function showVulnDetail(vulnId) {
       </div>
     </div>
     ` : ""}
+
+    <div class="detail-export-footer">
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Eksporter</span>
+      <button class="export-btn" onclick="exportVulnDetailHtml('${escapeHtml(vuln.id)}')">⬇ HTML</button>
+      <button class="export-btn" onclick="exportVulnDetailMarkdown('${escapeHtml(vuln.id)}')">⬇ Markdown</button>
+    </div>
   `;
 
   body.innerHTML = html;
   panel.classList.remove("hidden");
+}
+
+function buildVulnDetailData(vulnId) {
+  const allVulns = buildVulnIndex();
+  const entry = allVulns.find(e => e.vuln.id === vulnId);
+  if (!entry) return null;
+  const { vuln, repos } = entry;
+  const byProject = {};
+  for (const r of repos) {
+    if (!byProject[r.project]) byProject[r.project] = [];
+    byProject[r.project].push(r);
+  }
+  const uniqueVersions = [...new Set(repos.map(r => r.version))].sort();
+  const uniqueRepoCount = new Set(repos.map(r => `${r.project}|${r.repo}`)).size;
+  return { vuln, repos, byProject, uniqueVersions, uniqueRepoCount };
+}
+
+function exportVulnDetailHtml(vulnId) {
+  const d = buildVulnDetailData(vulnId);
+  if (!d) return;
+  const { vuln, byProject, uniqueVersions, uniqueRepoCount } = d;
+
+  const sevColors = { CRITICAL: "#ef4444", HIGH: "#f97316", MEDIUM: "#eab308", LOW: "#3b82f6", NONE: "#6b7280", UNKNOWN: "#6b7280" };
+  const sevColor = sevColors[vuln.severity] || sevColors.UNKNOWN;
+  const cveDisplay = vuln.cveId || vuln.id;
+  const osvUrl = `https://osv.dev/vulnerability/${encodeURIComponent(vuln.id)}`;
+  const nvdUrl = vuln.cveId ? `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(vuln.cveId)}` : null;
+  const ghsaId = (vuln.aliases || []).find(a => a.startsWith("GHSA-"));
+  const ghsaUrl = ghsaId ? `https://github.com/advisories/${ghsaId}` : null;
+
+  const repoRows = Object.entries(byProject).map(([proj, projRepos]) =>
+    projRepos.map(r => `
+      <tr>
+        <td>${escapeHtml(proj)}</td>
+        <td>${escapeHtml(r.repo)}</td>
+        <td><code>${escapeHtml(r.version)}</code></td>
+      </tr>`).join("")
+  ).join("");
+
+  const refLinks = [
+    `<a href="${osvUrl}">OSV.dev — ${escapeHtml(vuln.id)}</a>`,
+    nvdUrl ? `<a href="${nvdUrl}">NVD — ${escapeHtml(vuln.cveId)}</a>` : "",
+    ghsaUrl ? `<a href="${ghsaUrl}">GitHub Advisory — ${escapeHtml(ghsaId)}</a>` : "",
+    ...(vuln.references || []).map(ref => `<a href="${escapeHtml(ref.url)}">${escapeHtml(ref.type || "Referanse")} — ${escapeHtml(new URL(ref.url).hostname)}</a>`),
+  ].filter(Boolean).map(l => `<li>${l}</li>`).join("");
+
+  const timestamp = report?.generatedAt ? new Date(report.generatedAt).toLocaleString("nb-NO") : new Date().toLocaleString("nb-NO");
+
+  const html = `<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(cveDisplay)} — Argus Sårbarhetrapport</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a2e; background: #f8f9fa; padding: 2rem; }
+    .container { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 2rem 2.5rem; }
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.25rem; color: #111; }
+    h2 { font-size: 1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; color: #333; border-bottom: 1px solid #eee; padding-bottom: 0.25rem; }
+    .meta { font-size: 0.8rem; color: #666; margin-bottom: 1rem; }
+    .badge { display: inline-block; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.78rem; font-weight: 700; color: #fff; background: ${sevColor}; }
+    .cvss { font-size: 1.2rem; font-weight: 700; color: ${sevColor}; margin-left: 0.5rem; }
+    .fix { background: #dcfce7; color: #166534; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; display: inline-block; margin-top: 0.25rem; }
+    .nofix { background: #fee2e2; color: #991b1b; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; display: inline-block; margin-top: 0.25rem; }
+    .versions { font-size: 0.82rem; color: #555; margin-top: 0.4rem; }
+    code { font-family: "Consolas", "Fira Code", monospace; background: #f3f4f6; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.85em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    th { text-align: left; font-size: 0.78rem; font-weight: 600; color: #555; padding: 0.4rem 0.6rem; border-bottom: 2px solid #eee; }
+    td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; }
+    tr:last-child td { border-bottom: none; }
+    ul { padding-left: 1.2rem; }
+    li { margin-bottom: 0.2rem; font-size: 0.85rem; }
+    a { color: #2563eb; }
+    .header-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .footer { margin-top: 2rem; font-size: 0.75rem; color: #999; border-top: 1px solid #eee; padding-top: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-row">
+      <span class="badge">${escapeHtml(sevLabelNo(vuln.severity || "UNKNOWN").toUpperCase())}</span>
+      ${vuln.cvssScore ? `<span class="cvss">CVSS ${vuln.cvssScore.toFixed(1)}</span>` : ""}
+    </div>
+    <h1>${escapeHtml(vuln.summary)}</h1>
+    <div class="meta">${escapeHtml(vuln.id)}${vuln.cveId && vuln.cveId !== vuln.id ? ` · ${escapeHtml(vuln.cveId)}` : ""}</div>
+
+    <h2>Pakke</h2>
+    <p>📦 <strong>${escapeHtml(vuln.package)}</strong> (${escapeHtml(vuln.ecosystem || "")})</p>
+    ${vuln.fixedIn ? `<span class="fix">✅ Oppgrader til ${escapeHtml(vuln.fixedIn)}</span>` : `<span class="nofix">Ingen kjent fiks</span>`}
+    <p class="versions">Sårbare versjoner funnet: ${uniqueVersions.map(v => `<code>${escapeHtml(v)}</code>`).join(", ")}</p>
+
+    <h2>Oppdaget i ${uniqueRepoCount} repositor${uniqueRepoCount === 1 ? "y" : "ies"}</h2>
+    <table>
+      <thead><tr><th>Prosjekt</th><th>Repository</th><th>Versjon</th></tr></thead>
+      <tbody>${repoRows}</tbody>
+    </table>
+
+    <h2>Referanser</h2>
+    <ul>${refLinks}</ul>
+
+    ${vuln.aliases && vuln.aliases.length > 0 ? `
+    <h2>Aliaser</h2>
+    <p>${vuln.aliases.map(a => `<code>${escapeHtml(a)}</code>`).join(" &nbsp; ")}</p>
+    ` : ""}
+
+    <div class="footer">Generert av Argus — ${timestamp}</div>
+  </div>
+</body>
+</html>`;
+
+  downloadFile(`${vulnId}.html`, html, "text/html");
+}
+
+function exportVulnDetailMarkdown(vulnId) {
+  const d = buildVulnDetailData(vulnId);
+  if (!d) return;
+  const { vuln, byProject, uniqueVersions, uniqueRepoCount } = d;
+
+  const cveDisplay = vuln.cveId || vuln.id;
+  const osvUrl = `https://osv.dev/vulnerability/${encodeURIComponent(vuln.id)}`;
+  const nvdUrl = vuln.cveId ? `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(vuln.cveId)}` : null;
+  const ghsaId = (vuln.aliases || []).find(a => a.startsWith("GHSA-"));
+  const ghsaUrl = ghsaId ? `https://github.com/advisories/${ghsaId}` : null;
+  const timestamp = report?.generatedAt ? new Date(report.generatedAt).toLocaleString("nb-NO") : new Date().toLocaleString("nb-NO");
+
+  const sevLabel = sevLabelNo(vuln.severity || "UNKNOWN").toUpperCase();
+  const cvssStr = vuln.cvssScore ? ` · CVSS ${vuln.cvssScore.toFixed(1)}` : "";
+
+  let md = `# ${vuln.summary}\n\n`;
+  md += `**ID:** ${vuln.id}${vuln.cveId && vuln.cveId !== vuln.id ? ` · ${vuln.cveId}` : ""}  \n`;
+  md += `**Alvorlighet:** ${sevLabel}${cvssStr}  \n`;
+  md += `**Pakke:** ${vuln.package} (${vuln.ecosystem || ""})  \n`;
+  md += vuln.fixedIn
+    ? `**Fiks:** Oppgrader til \`${vuln.fixedIn}\`  \n`
+    : `**Fiks:** Ingen kjent fiks  \n`;
+  md += `**Sårbare versjoner:** ${uniqueVersions.map(v => `\`${v}\``).join(", ")}  \n\n`;
+
+  md += `## Oppdaget i ${uniqueRepoCount} repositor${uniqueRepoCount === 1 ? "y" : "ies"}\n\n`;
+  md += `| Prosjekt | Repository | Versjon |\n`;
+  md += `|----------|------------|----------|\n`;
+  for (const [proj, projRepos] of Object.entries(byProject)) {
+    for (const r of projRepos) {
+      md += `| ${proj} | ${r.repo} | \`${r.version}\` |\n`;
+    }
+  }
+
+  md += `\n## Referanser\n\n`;
+  md += `- [OSV.dev — ${vuln.id}](${osvUrl})\n`;
+  if (nvdUrl) md += `- [NVD — ${vuln.cveId}](${nvdUrl})\n`;
+  if (ghsaUrl) md += `- [GitHub Advisory — ${ghsaId}](${ghsaUrl})\n`;
+  for (const ref of vuln.references || []) {
+    md += `- [${ref.type || "Referanse"} — ${new URL(ref.url).hostname}](${ref.url})\n`;
+  }
+
+  if (vuln.aliases && vuln.aliases.length > 0) {
+    md += `\n## Aliaser\n\n${vuln.aliases.map(a => `\`${a}\``).join(", ")}\n`;
+  }
+
+  md += `\n---\n_Generert av Argus — ${timestamp}_\n`;
+
+  downloadFile(`${vulnId}.md`, md, "text/markdown");
+}
+
+function downloadFile(filename, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ---------------------------------------------------------------------------
