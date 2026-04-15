@@ -777,10 +777,31 @@ function ecoClass(ecosystem) {
   }
 }
 
-function renderVulnList(allVulns) {
-  const searchTerm = ($("#vuln-search-input")?.value || "").toLowerCase();
+function vulnerabilityMatchesFilters(vuln, repo, searchTerm) {
+  if (vulnFilters.severity.length > 0 && !vulnFilters.severity.includes(vuln.severity || "UNKNOWN")) {
+    return false;
+  }
+  if (vulnFilters.ecosystem.length > 0 && !vulnFilters.ecosystem.includes(vuln.ecosystem || "Ukjent")) {
+    return false;
+  }
+  if (vulnFilters.projects.length > 0 && !vulnFilters.projects.includes(repo.project)) {
+    return false;
+  }
+  if (vulnFilters.fixAvailable.length === 1) {
+    const wantFix = vulnFilters.fixAvailable[0] === "yes";
+    if (wantFix ? !vuln.fixedIn : !!vuln.fixedIn) return false;
+  }
+  if (searchTerm) {
+    const searchable = [
+      vuln.id, vuln.cveId, vuln.summary, vuln.package, vuln.ecosystem, ...(vuln.aliases || []),
+      repo.project, repo.repo, vuln.version,
+    ].join(" ").toLowerCase();
+    if (!searchable.includes(searchTerm)) return false;
+  }
+  return true;
+}
 
-  // Filtrer
+function getFilteredVulns(allVulns, searchTerm) {
   let filtered = allVulns;
 
   if (vulnFilters.severity.length > 0) {
@@ -809,6 +830,13 @@ function renderVulnList(allVulns) {
       return searchable.includes(searchTerm);
     });
   }
+
+  return filtered;
+}
+
+function renderVulnList(allVulns) {
+  const searchTerm = ($("#vuln-search-input")?.value || "").toLowerCase();
+  const filtered = getFilteredVulns(allVulns, searchTerm);
 
   $("#vuln-result-count").textContent = `${filtered.length} sårbarheter funnet`;
 
@@ -869,6 +897,52 @@ function renderVulnList(allVulns) {
   }
 
   $("#vuln-table-container").innerHTML = html;
+}
+
+function buildSummaryForRepos(repos, checks) {
+  const byCheck = {};
+  for (const checkId of checks) {
+    const passed = repos.filter(r => r.checks[checkId] === true).length;
+    const notApplicable = repos.filter(r => r.checks[checkId] === null).length;
+    const coveredByAlt = repos.filter(r =>
+      r.checks[checkId] === false && r.assessments?.[checkId]?.startsWith("Ikke nødvendig")
+    ).length;
+    const failed = repos.filter(r => r.checks[checkId] === false).length - coveredByAlt;
+    const applicable = repos.length - notApplicable;
+    const covered = passed + coveredByAlt;
+    byCheck[checkId] = {
+      passed, failed, coveredByAlt, notApplicable,
+      coveragePercent: applicable ? +((covered / applicable) * 100).toFixed(1) : 0,
+    };
+  }
+  return { total: repos.length, byCheck };
+}
+
+function exportFilteredIssuesJson() {
+  if (!report) return;
+
+  const searchTerm = ($("#vuln-search-input")?.value || "").toLowerCase();
+  const filteredRepos = report.repos
+    .map(repo => {
+      const vulnerabilities = (repo.vulnerabilities || []).filter(vuln =>
+        vulnerabilityMatchesFilters(vuln, repo, searchTerm)
+      );
+      if (vulnerabilities.length === 0) return null;
+      return { ...repo, vulnerabilities };
+    })
+    .filter(Boolean);
+
+  const exportedReport = {
+    generatedAt: new Date().toISOString(),
+    checks: [...report.checks],
+    summary: buildSummaryForRepos(filteredRepos, report.checks),
+    repos: filteredRepos,
+  };
+
+  const fileStamp = new Date().toISOString().replace(/[:.]/g, "-");
+  downloadFile(`issues-filtrert-${fileStamp}.json`, JSON.stringify(exportedReport, null, 2), "application/json");
+  const issueCount = filteredRepos.reduce((sum, repo) => sum + (repo.vulnerabilities || []).length, 0);
+  toast(`Eksporterte ${issueCount} issue${issueCount === 1 ? "" : "s"} til JSON.`);
 }
 
 function toggleVulnFilter(group, value) {

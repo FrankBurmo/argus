@@ -62,6 +62,7 @@ python -m http.server 8080
    ```
 2. Åpne frontend i nettleseren.
 3. Last inn rapport-filen via filopplasting (knapp eller dra & slipp) — eller klikk **Se demo** for forhåndslastet eksempeldata.
+4. I fanen **Sårbarheter** kan du bruke filtre og eksportere valgte issues til JSON som kan lastes inn igjen i dashboardet.
 
 ## Arkitektur
 
