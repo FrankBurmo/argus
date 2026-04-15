@@ -794,7 +794,7 @@ function vulnerabilityMatchesFilters(vuln, repo, searchTerm) {
   if (searchTerm) {
     const searchable = [
       vuln.id, vuln.cveId, vuln.summary, vuln.package, vuln.ecosystem, ...(vuln.aliases || []),
-      repo.project, repo.repo, vuln.version,
+      repo.project, repo.repo, repo.version || vuln.version,
     ].join(" ").toLowerCase();
     if (!searchable.includes(searchTerm)) return false;
   }
@@ -802,36 +802,9 @@ function vulnerabilityMatchesFilters(vuln, repo, searchTerm) {
 }
 
 function getFilteredVulns(allVulns, searchTerm) {
-  let filtered = allVulns;
-
-  if (vulnFilters.severity.length > 0) {
-    filtered = filtered.filter(({ vuln }) => vulnFilters.severity.includes(vuln.severity || "UNKNOWN"));
-  }
-  if (vulnFilters.ecosystem.length > 0) {
-    filtered = filtered.filter(({ vuln }) => vulnFilters.ecosystem.includes(vuln.ecosystem || "Ukjent"));
-  }
-  if (vulnFilters.projects.length > 0) {
-    filtered = filtered.filter(({ repos }) => repos.some(r => vulnFilters.projects.includes(r.project)));
-  }
-  if (vulnFilters.fixAvailable.length > 0) {
-    if (vulnFilters.fixAvailable.length === 1) {
-      const wantFix = vulnFilters.fixAvailable[0] === "yes";
-      filtered = filtered.filter(({ vuln }) => wantFix ? !!vuln.fixedIn : !vuln.fixedIn);
-    }
-  }
-
-  if (searchTerm) {
-    filtered = filtered.filter(({ vuln, repos }) => {
-      const searchable = [
-        vuln.id, vuln.cveId, vuln.summary, vuln.package,
-        vuln.ecosystem, ...(vuln.aliases || []),
-        ...repos.map(r => `${r.project} ${r.repo} ${r.version}`),
-      ].join(" ").toLowerCase();
-      return searchable.includes(searchTerm);
-    });
-  }
-
-  return filtered;
+  return allVulns.filter(({ vuln, repos }) =>
+    repos.some(repo => vulnerabilityMatchesFilters(vuln, repo, searchTerm))
+  );
 }
 
 function renderVulnList(allVulns) {
