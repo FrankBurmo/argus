@@ -11,7 +11,9 @@ CLI-verktøy som kobler til Bitbucket Server/Data Center via REST API, kjører k
 - **[`docs/forbedringsplan.md`](docs/forbedringsplan.md)** — Plan for 15 nye sjekker og 17 frontend-forbedringer
 
 ---
+<img width="1037" height="1122" alt="index" src="https://github.com/user-attachments/assets/6976b89b-97d6-42e1-beeb-fe3ebd6e2c60" />
 
+---
 ## Dashboard (GitHub Pages)
 
 **Åpne dashboardet: [frankburmo.github.io/argus](https://frankburmo.github.io/argus)**
