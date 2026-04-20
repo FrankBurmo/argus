@@ -1,0 +1,291 @@
+// Argus – Bitbucket Audit – C4-arkitekturdiagram
+
+specification {
+  element actor {
+    style {
+      shape person
+      color amber
+    }
+  }
+  element softwareSystem {
+    style {
+      shape rectangle
+      color primary
+    }
+  }
+  element externalSystem {
+    style {
+      shape rectangle
+      color muted
+    }
+  }
+  element container {
+    style {
+      shape rectangle
+      color secondary
+    }
+  }
+  element component {
+    style {
+      shape component
+      color green
+    }
+  }
+  element database {
+    style {
+      shape storage
+      color indigo
+    }
+  }
+}
+
+model {
+  // ── Aktører ──
+  devops = actor 'DevOps-bruker' {
+    description 'Kjører Argus CLI for å revidere Bitbucket-repoer'
+  }
+  viewer = actor 'Dashbord-bruker' {
+    description 'Ser på revisjonsrapporter i nettleseren'
+  }
+
+  // ── Eksterne systemer ──
+  bitbucket = externalSystem 'Bitbucket Server' {
+    description 'Bitbucket Server/Data Center – kildekode og REST API v1.0'
+    technology 'REST API'
+    icon tech:bitbucket
+  }
+  osvBucket = externalSystem 'Google OSV Database' {
+    description 'Offentlig sårbarhetsdatabase (osv-vulnerabilities bucket)'
+    technology 'Google Cloud Storage'
+    icon tech:google-cloud
+  }
+
+  // ── Argus-systemet ──
+  argus = softwareSystem 'Argus' {
+    description 'Revisjonsverktøy som sjekker sikkerhet, kodekvalitet og beste praksis i Bitbucket-repoer'
+
+    // ── Container: Bitbucket Audit CLI ──
+    cli = container 'Bitbucket Audit CLI' {
+      description 'Node.js CLI-applikasjon som orkestrerer revisjonen'
+      technology 'Node.js / JavaScript (CommonJS)'
+      icon tech:nodejs
+
+      httpClient = component 'HTTP-klient' {
+        description 'request() og getAllPages() med Bearer-token og Bitbucket-paginering'
+        technology 'Node.js https'
+      }
+      pool = component 'Concurrency Pool' {
+        description 'pooledMap() – parallell kjøring av sjekker med begrenset antall workers'
+        technology 'Node.js'
+      }
+      tokenManager = component 'Token Manager' {
+        description 'Sikker lagring/henting av Bitbucket-token via OS-native credential store'
+        technology 'DPAPI / Keychain / Secret Service'
+      }
+      reportGenerator = component 'Rapportgenerator' {
+        description 'Bygger JSON- og Markdown-rapporter fra revisjonsresultatene'
+        technology 'Node.js'
+      }
+    }
+
+    // ── Container: Sjekker-rammeverk ──
+    checks = container 'Sjekker-rammeverk' {
+      description '13 pluggbare sikkerhetssjekker med felles interface {id, label, run}'
+      technology 'Node.js / JavaScript'
+      icon tech:nodejs
+
+      secrets = component 'Hemmeligheter' {
+        description 'Sjekker at .env, .key, id_rsa o.l. ikke er committet'
+      }
+      pipeline = component 'CI/CD Pipeline' {
+        description 'Sjekker at Jenkinsfile eksisterer'
+      }
+      branchProt = component 'Branch Protection' {
+        description 'Sjekker at main-branch er beskyttet'
+      }
+      depVulns = component 'Sårbarhetssjekk' {
+        description 'Sjekker kjente CVE-er via lokal OSV-database'
+      }
+      codeowners = component 'CODEOWNERS' {
+        description 'Sjekker at CODEOWNERS-fil eksisterer'
+      }
+      readme = component 'README' {
+        description 'Sjekker at README.md eksisterer'
+      }
+      tests = component 'Tester' {
+        description 'Sjekker at testrammeverk er konfigurert'
+      }
+      linting = component 'Linting' {
+        description 'Sjekker at linter kjøres i CI'
+      }
+      renovate = component 'Avhengighetsoppdatering' {
+        description 'Sjekker at Renovate/Dependabot er konfigurert'
+      }
+      npmAudit = component 'npm audit' {
+        description 'Sjekker at npm audit kjøres i CI'
+      }
+      owasp = component 'OWASP Dep Check' {
+        description 'Sjekker at OWASP-skanning er aktivert'
+      }
+      prActivity = component 'PR-aktivitet' {
+        description 'Sjekker at PR-er gjennomgås før merge'
+      }
+      stale = component 'Stale-sjekk' {
+        description 'Sjekker at repoet er aktivt vedlikeholdt'
+      }
+    }
+
+    // ── Container: OSV Lokal Database ──
+    osvLocal = container 'OSV Lokal Database' {
+      description 'Offline sårbarhetsdatabase – synkroniserer fra Google OSV og tilbyr lokale spørringer'
+      technology 'TypeScript / sql.js (SQLite)'
+      icon tech:sqlite
+
+      syncModule = component 'Sync-modul' {
+        description 'Laster ned og oppdaterer sårbarhetsdataene fra Google OSV-bucket'
+        technology 'TypeScript'
+      }
+      queryModule = component 'Query-modul' {
+        description 'Semver-bevisst matching av pakker mot kjente CVE-er'
+        technology 'TypeScript'
+      }
+      sqliteDb = database 'SQLite-database' {
+        description 'In-memory SQLite med fil-persistens – vulns-tabell med (ecosystem, package_name, versjon, etc.)'
+        technology 'sql.js'
+      }
+    }
+
+    // ── Container: Frontend Dashboard ──
+    frontend = container 'Frontend Dashboard' {
+      description 'SPA som visualiserer revisjonsresultatene – null backend, leser JSON-rapporter'
+      technology 'HTML / CSS / JavaScript'
+      icon tech:javascript
+
+      reportViewer = component 'Rapportvisning' {
+        description 'Opplasting og parsing av JSON-rapport med filtrering og søk'
+      }
+      vulnView = component 'Sårbarhetsoversikt' {
+        description 'CVE-detaljer, alvorlighetsgrad, filtrering per repo'
+      }
+      remediationGuide = component 'Forbedringsguide' {
+        description 'Trinnvise utbedringsinstrukser per sjekk med dokumentasjonslenker'
+      }
+    }
+  }
+
+  // ── Relasjoner: Kontekst-nivå ──
+  devops -> argus 'kjører revisjon'
+  viewer -> argus.frontend 'ser på rapporter i nettleseren'
+  argus.cli -> bitbucket 'henter prosjekter, repoer og filinnhold via REST API'
+  argus.osvLocal.syncModule -> osvBucket 'synkroniserer sårbarhetsdataene (ZIP/CSV)'
+
+  // ── Relasjoner: Container-nivå ──
+  argus.cli -> argus.checks 'laster og kjører sjekker'
+  argus.cli.pool -> argus.checks 'parallellkjører sjekker per repo'
+  argus.checks.depVulns -> argus.osvLocal.queryModule 'spør om kjente CVE-er'
+  argus.cli.reportGenerator -> argus.frontend 'genererer JSON-rapport som importeres i dashboard'
+
+  // ── Relasjoner: Komponent-nivå ──
+  argus.cli.pool -> argus.cli.httpClient 'bruker for API-kall'
+  argus.cli.httpClient -> bitbucket 'HTTPS med Bearer-token'
+  argus.cli.tokenManager -> argus.cli.httpClient 'leverer autentiseringstoken'
+  argus.osvLocal.syncModule -> argus.osvLocal.sqliteDb 'skriver sårbarhetsdataene'
+  argus.osvLocal.queryModule -> argus.osvLocal.sqliteDb 'leser og matcher CVE-er'
+  argus.frontend.reportViewer -> argus.frontend.vulnView 'viser sårbarheter fra rapport'
+  argus.frontend.reportViewer -> argus.frontend.remediationGuide 'viser utbedringsforslag'
+}
+
+views {
+
+  // ── Kontekstdiagram (C4 Level 1) ──
+  view index {
+    title 'Argus – Systemkontekst'
+    description 'Oversikt over Argus og dets relasjon til aktører og eksterne systemer'
+
+    include
+      devops,
+      viewer,
+      argus,
+      bitbucket,
+      osvBucket
+
+    style argus {
+      color primary
+    }
+  }
+
+  // ── Containerdiagram (C4 Level 2) ──
+  view containers of argus {
+    title 'Argus – Containere'
+    description 'De fire hovedkomponentene i Argus-systemet'
+
+    include
+      *,
+      devops,
+      viewer,
+      bitbucket,
+      osvBucket
+
+    style devops, viewer {
+      color amber
+    }
+    style bitbucket, osvBucket {
+      color muted
+    }
+  }
+
+  // ── Komponentdiagram: CLI (C4 Level 3) ──
+  view cliComponents of argus.cli {
+    title 'Bitbucket Audit CLI – Komponenter'
+    description 'Internstrukturen til CLI-applikasjonen'
+
+    include
+      *,
+      argus.checks,
+      bitbucket
+
+    style bitbucket {
+      color muted
+    }
+  }
+
+  // ── Komponentdiagram: Sjekker (C4 Level 3) ──
+  view checksComponents of argus.checks {
+    title 'Sjekker-rammeverk – Komponenter'
+    description 'Alle 13 pluggbare sikkerhetssjekker'
+
+    include
+      *,
+      argus.osvLocal.queryModule,
+      bitbucket
+
+    style bitbucket {
+      color muted
+    }
+  }
+
+  // ── Komponentdiagram: OSV Lokal (C4 Level 3) ──
+  view osvComponents of argus.osvLocal {
+    title 'OSV Lokal Database – Komponenter'
+    description 'Synkronisering og spørring av sårbarhetsdataene'
+
+    include
+      *,
+      osvBucket,
+      argus.checks.depVulns
+
+    style osvBucket {
+      color muted
+    }
+  }
+
+  // ── Komponentdiagram: Frontend (C4 Level 3) ──
+  view frontendComponents of argus.frontend {
+    title 'Frontend Dashboard – Komponenter'
+    description 'Visualisering av revisjonsresultater'
+
+    include
+      *,
+      viewer
+  }
+}
