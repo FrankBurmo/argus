@@ -592,22 +592,24 @@ https://argus.example.com/?report=https://reports.internal/argus-latest.json
 
 #### Strategi: Tre integrasjonslag
 
-**Lag 1 — OCSF-formatert hendelsesstrøm (CLI-output)**
+**Lag 1 — OCSF-formatert hendelsesstrøm (CLI-output)** ✅ *Implementert 2026-04-27*
+
+> **Status:** Ferdig. Se [`siem/ocsf.js`](../bitbucket-audit/siem/ocsf.js) og `--output-format ocsf`-flagget i `index.js`.
 
 Bruk [Open Cybersecurity Schema Framework (OCSF)](https://schema.ocsf.io/) — en åpen standard utviklet av AWS, Splunk, IBM, CrowdStrike m.fl. — for å formatere Argus-funn som strukturerte sikkerhetshendelser.
 
 OCSF-hendelsestyper for Argus-funn:
 
-| Argus-funn | OCSF-klasse | Klasse-UID | Eksempel |
-|------------|-------------|------------|----------|
-| Sjekk bestått/feilet | Compliance Finding | 2003 | `branch-protection: fail` |
-| Sårbarhet funnet | Vulnerability Finding | 2002 | `CVE-2024-1234 i lodash` |
-| Hemmelig fil oppdaget | Detection Finding | 2004 | `.env med API-nøkkel` |
-| Regresjonsalarm | Incident Finding | 2001 | `branch-protection gikk fra pass → fail` |
+| Argus-funn | OCSF-klasse | Klasse-UID | Eksempel | Status |
+|------------|-------------|------------|----------|--------|
+| Sjekk feilet | Compliance Finding | 2003 | `branch-protection: fail` | ✅ |
+| Sårbarhet funnet | Vulnerability Finding | 2002 | `CVE-2024-1234 i lodash` | ✅ |
+| Hemmelig fil oppdaget | Detection Finding | 2004 | `.env med API-nøkkel` | ✅ |
+| Regresjonsalarm | Incident Finding | 2001 | `branch-protection gikk fra pass → fail` | ⬜ Lag 2+ |
 
 **Fordel:** OCSF er leverandøragnostisk og støttes direkte av Splunk, Amazon Security Lake, Elastic, Google Chronicle og Microsoft Sentinel (via mapping). Argus trenger bare å produsere OCSF — og alle SIEM-er kan konsumere det.
 
-CLI-flagg: `--output-format ocsf` → skriver OCSF JSON-filer ved siden av vanlig rapport.
+CLI-flagg: `--output-format ocsf` → skriver OCSF JSON-fil (`audit-<timestamp>.ocsf.json`) ved siden av vanlig rapport.
 
 ---
 
@@ -1078,7 +1080,7 @@ node index.js PROJ --enforce --policy argus-policy.json
 | 13 | Prosjekt-fokusert visning for tech leads | Frontend | Medium |
 | 14 | Rapport-sammenligning over tid (trend) | Frontend | Medium |
 | 15 | `secret-scanning-config`-sjekk | Sjekk | Medium |
-| 16 | SIEM-push: OCSF-formatert output (`--output-format ocsf`) | Backend | Medium |
+| 16 | ~~SIEM-push: OCSF-formatert output (`--output-format ocsf`)~~ ✅ | Backend | Medium |
 | 17 | SIEM-push: Splunk HEC / Webhook-integrasjon (`--siem`) | Backend | Medium |
 
 ### Fase 3 — Medium verdi, variabel innsats (6–12 uker)

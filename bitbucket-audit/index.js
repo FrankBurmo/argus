@@ -21,6 +21,15 @@ const MAX_REPOS = parseInt(process.env.MAX_REPOS, 10) || 0; // 0 = ingen grense
 // Filtrer på ett Bitbucket-prosjekt: søk i CLI-argument først, deretter miljøvariabel
 const PROJECT_KEY = (process.argv[2] || process.env.PROJECT_KEY || "").toUpperCase().trim() || null;
 
+// Støttede utdataformater: "default" (tekst + JSON + MD) eller "ocsf" (inkl. OCSF JSON-fil)
+const OUTPUT_FORMAT = (() => {
+  const flag = process.argv.find((a) => a.startsWith("--output-format="));
+  if (flag) return flag.split("=")[1].toLowerCase();
+  const idx = process.argv.indexOf("--output-format");
+  if (idx !== -1 && process.argv[idx + 1]) return process.argv[idx + 1].toLowerCase();
+  return "default";
+})();
+
 const secret = require("./secret");
 
 function validateEnv() {
@@ -641,6 +650,15 @@ async function main() {
   console.log(`\nRapporter skrevet til:`);
   console.log(`  JSON : ${jsonPath}`);
   console.log(`  MD   : ${mdPath}`);
+
+  // OCSF-hendelsesstrøm (kun ved --output-format ocsf)
+  if (OUTPUT_FORMAT === "ocsf") {
+    const { toOcsfEvents } = require("./siem/ocsf");
+    const ocsfEvents = toOcsfEvents(report, checks);
+    const ocsfPath = path.join(reportsDir, `audit-${timestamp}.ocsf.json`);
+    fs.writeFileSync(ocsfPath, JSON.stringify(ocsfEvents, null, 2), "utf8");
+    console.log(`  OCSF : ${ocsfPath}  (${ocsfEvents.length} hendelser)`);
+  }
 
   printReport(report, checks);
 }
