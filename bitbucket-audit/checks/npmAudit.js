@@ -1,6 +1,6 @@
 "use strict";
 
-const { listAllFiles, findJenkinsfile } = require("./utils");
+const { listAllFiles, findJenkinsfile, fetchFileContent } = require("./utils");
 
 // Mønstre i Jenkinsfile som indikerer npm audit
 const JENKINS_PATTERNS = [
@@ -24,16 +24,6 @@ const PKG_SCRIPT_PATTERNS = [
   "npm-audit-resolver",
 ];
 
-/**
- * Henter filinnhold fra Bitbucket og returnerer som tekst.
- */
-async function fetchFileContent(projectKey, repoSlug, filePath, request, limit = 5000) {
-  const content = await request(
-    `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/browse/${encodeURIComponent(filePath)}?limit=${limit}`
-  );
-  return (content.lines || []).map((l) => l.text).join("\n");
-}
-
 module.exports = {
   id: "npm-audit",
   label: "npm Audit",
@@ -53,7 +43,7 @@ module.exports = {
       const pomFiles = list.filter((f) => f === "pom.xml" || f.endsWith("/pom.xml"));
       for (const pom of pomFiles) {
         try {
-          const pomText = await fetchFileContent(projectKey, repoSlug, pom, request, 10000);
+          const pomText = await fetchFileContent(projectKey, repoSlug, pom, request, { limit: 10000 });
           // Sjekk at det faktisk er frontend-maven-plugin som kjører npm audit
           if (pomText.includes("frontend-maven-plugin") && POM_PATTERNS.some((p) => pomText.includes(p))) {
             return true;

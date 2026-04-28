@@ -1,14 +1,16 @@
 "use strict";
 
+const { repoApiPath } = require("./utils");
+
 module.exports = {
   id: "branch-protection",
   label: "Branch-beskyttelse",
   run: async (projectKey, repoSlug, request) => {
     try {
+      const base = repoApiPath(projectKey, repoSlug);
+
       // Hent default branch for repoet
-      const defaultBranch = await request(
-        `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/branches/default`
-      );
+      const defaultBranch = await request(`${base}/branches/default`);
 
       if (!defaultBranch) return false;
 

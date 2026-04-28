@@ -1,6 +1,6 @@
 "use strict";
 
-const { listAllFiles, findJenkinsfile } = require("./utils");
+const { listAllFiles, findJenkinsfile, fetchFileContent } = require("./utils");
 
 // Mønstre som indikerer bruk av OWASP Dependency-Check i en pipeline
 const OWASP_PATTERNS = [
@@ -39,12 +39,7 @@ module.exports = {
       if (!jenkinsfile) return null; // Ingen pipeline — sjekken er ikke aktuell
 
       // 2. Les innholdet i Jenkinsfile og sjekk for OWASP-mønstre
-      const content = await request(
-        `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/browse/${encodeURIComponent(jenkinsfile)}?limit=5000`
-      );
-
-      // Bitbucket returnerer filinnhold som linjer i .lines[].text
-      const text = (content.lines || []).map((l) => l.text).join("\n");
+      const text = await fetchFileContent(projectKey, repoSlug, jenkinsfile, request);
       if (
         OWASP_PATTERNS.some((p) => text.includes(p)) ||
         IMPLICIT_OWASP_PATTERNS.some((p) => text.includes(p))
@@ -56,10 +51,7 @@ module.exports = {
       const buildFiles = list.filter((f) => BUILD_FILES.some((bf) => f === bf || f.endsWith("/" + bf)));
       for (const bf of buildFiles) {
         try {
-          const bfContent = await request(
-            `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/browse/${encodeURIComponent(bf)}?limit=10000`
-          );
-          const bfText = (bfContent.lines || []).map((l) => l.text).join("\n");
+          const bfText = await fetchFileContent(projectKey, repoSlug, bf, request, { limit: 10000 });
           if (BUILD_FILE_OWASP_PATTERNS.some((p) => bfText.includes(p))) {
             return true;
           }

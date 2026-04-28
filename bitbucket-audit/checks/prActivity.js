@@ -1,5 +1,7 @@
 "use strict";
 
+const { repoApiPath } = require("./utils");
+
 // Antall måneder tilbake vi ser etter PR-aktivitet
 const PR_MONTHS = parseInt(process.env.PR_MONTHS, 10) || 6;
 
@@ -9,7 +11,7 @@ module.exports = {
   run: async (projectKey, repoSlug, request) => {
     try {
       const data = await request(
-        `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/pull-requests?state=MERGED&limit=5`
+        `${repoApiPath(projectKey, repoSlug)}/pull-requests?state=MERGED&limit=5`
       );
 
       if (!Array.isArray(data.values) || data.values.length === 0) {

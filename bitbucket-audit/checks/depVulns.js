@@ -1,7 +1,7 @@
 "use strict";
 
 const https = require("https");
-const { listAllFiles } = require("./utils");
+const { listAllFiles, fetchFileContent } = require("./utils");
 
 // Offline OSV-modus via lokal SQLite-database
 const OSV_OFFLINE = (process.env.OSV_OFFLINE || "").toLowerCase() === "true";
@@ -41,33 +41,6 @@ const vulnDetailCache = new Map();
 // ---------------------------------------------------------------------------
 // Hjelpefunksjoner
 // ---------------------------------------------------------------------------
-
-/**
- * Henter innholdet til en fil fra Bitbucket browse-API.
- * Returnerer sammenhengende tekst.
- */
-async function fetchFileContent(projectKey, repoSlug, filePath, request) {
-  // Enkoder hvert path-segment separat for å bevare faktiske skråstreker i URL-en
-  const encodedPath = filePath.split("/").map(encodeURIComponent).join("/");
-  const lines = [];
-  let start = 0;
-
-  // Bitbucket browse-API paginerer linjer — hent alle sider for store filer
-  while (true) {
-    const content = await request(
-      `/rest/api/1.0/projects/${encodeURIComponent(projectKey)}/repos/${encodeURIComponent(repoSlug)}/browse/${encodedPath}?limit=5000&start=${start}`
-    );
-    if (Array.isArray(content.lines)) {
-      lines.push(...content.lines.map((l) => l.text));
-    }
-    if (content.isLastPage !== false) break;
-    start = content.nextPageStart;
-    // Sikkerhetsbegrensning: maks 200 000 linjer per fil
-    if (lines.length >= 200000) break;
-  }
-
-  return lines.join("\n");
-}
 
 /**
  * Henter høyeste alvorlighetsgrad fra en OSV-sårbarhet.
@@ -620,7 +593,7 @@ async function scanRepo(projectKey, repoSlug, request) {
     if (!match) continue;
 
     try {
-      const raw = await fetchFileContent(projectKey, repoSlug, match, request);
+      const raw = await fetchFileContent(projectKey, repoSlug, match, request, { paginate: true });
       const deps = def.parse(raw);
       allDeps = allDeps.concat(deps);
     } catch {
