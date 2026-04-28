@@ -1,0 +1,206 @@
+/* ================================================================
+   Dokumentasjonsside
+   ================================================================ */
+
+.docs-page {
+  display: flex;
+  min-height: calc(100vh - 52px - 5rem);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  gap: 2.5rem;
+}
+
+.docs-sidebar {
+  position: sticky;
+  top: 68px;
+  align-self: flex-start;
+  min-width: 200px;
+  max-width: 220px;
+  flex-shrink: 0;
+}
+
+.docs-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.docs-nav-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+  padding: 0 0.5rem;
+}
+
+.docs-nav-link {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition), color var(--transition);
+}
+
+.docs-nav-link:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.docs-nav-sub {
+  padding-left: 1.3rem;
+  font-size: 0.78rem;
+}
+
+.docs-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.docs-section {
+  margin-bottom: 3rem;
+}
+
+.docs-section h2 {
+  font-size: 1.4rem;
+  color: var(--text-primary);
+  margin: 0 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.docs-section h3 {
+  font-size: 1.05rem;
+  color: var(--accent-purple-light);
+  margin: 2rem 0 1rem;
+}
+
+.docs-section p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0 0 0.75rem;
+}
+
+.docs-section ul {
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+}
+
+.docs-section li {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 0.3rem;
+}
+
+.docs-section a {
+  color: var(--accent-purple-light);
+  text-decoration: none;
+}
+
+.docs-section a:hover {
+  text-decoration: underline;
+}
+
+.docs-section code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: var(--bg-primary);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  color: var(--accent-purple-light);
+}
+
+.docs-code {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin: 0.75rem 0 1.25rem;
+  overflow-x: auto;
+}
+
+.docs-code pre {
+  margin: 0;
+}
+
+.docs-code code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: none;
+  padding: 0;
+  line-height: 1.6;
+}
+
+.docs-check {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.docs-check h4 {
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.docs-check p {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin: 0 0 0.4rem;
+}
+
+.docs-check p:last-child {
+  margin-bottom: 0;
+}
+
+.docs-check-id {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: var(--accent-purple);
+  color: #fff;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.docs-table-wrap {
+  overflow-x: auto;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.docs-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 0.6rem 0.75rem;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.docs-table td {
+  padding: 0.55rem 0.75rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.docs-table tr:hover td {
+  background: var(--bg-card);
+}

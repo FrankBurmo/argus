@@ -1,0 +1,468 @@
+/* ================================================================
+   Landing / Opplasting (brukes i CTA-seksjonen)
+   ================================================================ */
+
+.landing-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition);
+  background: var(--bg-card);
+}
+
+.landing-upload:hover {
+  border-color: var(--accent-purple);
+  background: var(--bg-card-hover);
+}
+
+.upload-icon-lg { font-size: 2rem; }
+
+.upload-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.demo-btn {
+  margin-top: 1rem;
+  background: none;
+  border: none;
+  color: var(--text-link);
+  font-family: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.demo-btn:hover { text-decoration: underline; }
+
+/* ================================================================
+   Landingsside — GitHub Security-inspirert
+   ================================================================ */
+
+.landing-page {
+  overflow-x: hidden;
+}
+
+/* ── Hero ── */
+
+.hero {
+  position: relative;
+  text-align: center;
+  padding: 6rem 2rem 5rem;
+  overflow: hidden;
+}
+
+.hero-glow {
+  position: absolute;
+  top: -40%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 900px;
+  height: 600px;
+  background: radial-gradient(ellipse at center, rgba(124, 58, 237, 0.18) 0%, rgba(59, 130, 246, 0.08) 40%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero-eyebrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent-purple-light);
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  font-size: 3.2rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.1em;
+  background: linear-gradient(135deg, var(--text-primary) 60%, var(--accent-purple-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-subtitle {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 620px;
+  margin: 0 auto 2.5rem;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-decoration: none;
+  border: none;
+}
+
+.hero-btn-primary {
+  background: var(--accent-purple);
+  color: #fff;
+}
+
+.hero-btn-primary:hover {
+  background: #6d28d9;
+  text-decoration: none;
+}
+
+.hero-btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+}
+
+.hero-btn-secondary:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-purple);
+}
+
+.hero-btn-ghost {
+  background: transparent;
+  color: var(--text-link);
+  padding: 0.75rem 1rem;
+}
+
+.hero-btn-ghost:hover {
+  text-decoration: underline;
+}
+
+/* ── Verdiforslag (3 kort) ── */
+
+.value-props {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 2rem 5rem;
+}
+
+@media (max-width: 800px) {
+  .value-props { grid-template-columns: 1fr; }
+}
+
+.value-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  transition: border-color var(--transition), transform var(--transition);
+}
+
+.value-card:hover {
+  border-color: var(--accent-purple);
+  transform: translateY(-2px);
+}
+
+.value-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.value-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.value-card p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+/* ── Seksjonstitler ── */
+
+.section-eyebrow {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent-purple-light);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+/* ── Sjekk-showcase ── */
+
+.checks-showcase {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 3rem 2rem 5rem;
+}
+
+.checks-showcase-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.checks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .checks-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .checks-grid { grid-template-columns: 1fr; }
+}
+
+.check-feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: border-color var(--transition), transform var(--transition);
+}
+
+.check-feature-card:hover {
+  border-color: var(--accent-purple);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(124, 58, 237, 0.08) 100%);
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.25), 0 4px 20px rgba(124, 58, 237, 0.12);
+  transform: translateY(-2px);
+}
+
+.check-feature-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.check-feature-card h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.4rem;
+}
+
+.check-feature-card p {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin-bottom: 0.75rem;
+}
+
+.check-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: var(--info-bg);
+  color: var(--info);
+  font-weight: 500;
+}
+
+/* ── Slik fungerer det ── */
+
+.how-it-works {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 3rem 2rem 5rem;
+  text-align: center;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 3rem;
+  text-align: left;
+}
+
+@media (max-width: 800px) {
+  .steps-grid { grid-template-columns: 1fr; }
+}
+
+.step-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.step-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.step-card p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.step-code {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--accent-cyan);
+}
+
+/* ── CTA-seksjon ── */
+
+.cta-section {
+  text-align: center;
+  padding: 4rem 2rem 5rem;
+  background: linear-gradient(180deg, transparent 0%, rgba(124, 58, 237, 0.04) 100%);
+}
+
+.cta-content {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.cta-content h2 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.cta-content p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.cta-upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── Responsiv hero ── */
+
+@media (max-width: 700px) {
+  .hero { padding: 4rem 1.5rem 3rem; }
+  .hero-title { font-size: 2rem; }
+  .hero-subtitle { font-size: 1rem; }
+  .section-title { font-size: 1.6rem; }
+}
+
+
+/* ================================================================
+   Om Argus — Info-seksjon
+   ================================================================ */
+
+.about-section {
+  max-width: 900px;
+  margin: 3rem auto 0;
+  padding: 0 1.5rem;
+}
+
+.about-content {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+}
+
+.about-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.about-text h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.75rem;
+}
+
+.about-text p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin: 0 0 0.6rem;
+}
+
+.about-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--accent-purple-light);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.about-link:hover {
+  color: var(--accent-purple);
+  text-decoration: underline;
+}

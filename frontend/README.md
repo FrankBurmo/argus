@@ -7,9 +7,11 @@ Statisk HTML/CSS/JavaScript-applikasjon for visuell utforskning av Argus-rapport
 | Fil | Beskrivelse |
 |---|---|
 | `index.html` | Landingsside og hoved-app (én side) |
-| `styles.css` | Alle stiler — mørkt tema inspirert av Datadog |
-| `app.js` | All applikasjonslogikk (navigasjon, rendering, filhåndtering) |
 | `docs.html` | Dokumentasjonsside med sjekk-referanse |
+| `styles.css` | Stilark-aggregator som `@import`-er partials fra `css/` |
+| `css/` | CSS-partials (tokens, layout, landing, dashboard, vulnerabilities, …) |
+| `app.js` | Tynt entry-script — binder events og eksponerer globale handlere |
+| `js/` | ES-moduler: state, constants, utils, data, views, details |
 
 ## Kjøre lokalt
 
@@ -27,7 +29,7 @@ start frontend/index.html
 open frontend/index.html
 ```
 
-> **Merk:** Noen nettlesere blokkerer filsystemtilgang (`file://`) for drag & drop og visse API-er. Anbefaler en lokal server.
+> **Merk:** `app.js` bruker ES-moduler (`<script type="module">`), som ikke fungerer over `file://` i de fleste nettlesere. Bruk en lokal server (alternativ 2–4 under) for å laste appen.
 
 ### Alternativ 2 — npx serve (anbefalt)
 
@@ -66,13 +68,27 @@ python -m http.server 8080
 
 ## Arkitektur
 
-Applikasjonen er en enkeltsides applikasjon (SPA) uten rammeverk:
+Applikasjonen er en enkeltsides applikasjon (SPA) uten rammeverk eller byggesteg, men oppdelt i ES-moduler for vedlikeholdbarhet:
 
-- **Tilstand** — Én global `report`-variabel holder all data etter opplasting.
-- **Navigasjon** — `switchView()` bytter mellom `summary`, `vulnerabilities` og `repos`.
+```
+app.js                  Entry — event-binding + window-globaler for inline onclick
+js/
+  state.js              Sentral mutable state (report, filters, activeView)
+  constants/            CHECK_LABELS, CHECK_ICONS, CHECK_REMEDIATION
+  utils/                dom, format, assessment, download
+  data/                 report (innlasting), vulnIndex, demo
+  views/                router, summary, vulnerabilities, repos
+  details/              vulnDetail, repoDetail, panel
+```
+
+Sentrale konsepter:
+
+- **Tilstand** — `state`-objektet i `js/state.js` holder rapport, filtre og aktiv visning. Modulene leser og skriver direkte på dette objektet.
+- **Navigasjon** — `switchView()` (i `js/views/router.js`) bytter mellom `summary`, `vulnerabilities` og `repos`.
 - **Rendering** — Direkte DOM-manipulasjon via `innerHTML` med `escapeHtml()` for XSS-beskyttelse.
 - **Filhåndtering** — `FileReader` API for JSON-parsing, med validering av påkrevde felter.
 - **Sårbarhet-index** — `buildVulnIndex()` flater ut CVE-er på tvers av repos for effektivt søk og filtrering.
+- **Inline onclick** — Funksjoner som `showVulnDetail`, `toggleVulnFilter`, `filterByProject` m.fl. eksponeres på `window` i `app.js` siden de kalles fra dynamisk genererte `onclick`-attributter.
 
 ## Sjekk-dekning
 

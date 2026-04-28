@@ -1,0 +1,21 @@
+/* ================================================================
+   Toastr / Feedback
+   ================================================================ */
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--accent-purple);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  z-index: 300;
+  animation: fadeIn 0.3s ease, fadeOut 0.3s 2.7s ease forwards;
+}
+
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateY(8px); }
+}

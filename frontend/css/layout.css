@@ -1,0 +1,146 @@
+/* ================================================================
+   Topplinje
+   ================================================================ */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0 1.5rem;
+  height: 52px;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#logo-home {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition);
+}
+
+#logo-home:hover { opacity: 0.8; }
+
+.topbar-brand-link {
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition);
+}
+
+.topbar-brand-link:hover { opacity: 0.8; }
+
+.logo { font-size: 1.4rem; }
+
+.brand {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.brand-sub {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.topbar-nav {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: 2rem;
+}
+
+.nav-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-family: inherit;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.nav-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-card);
+}
+
+.nav-btn.active {
+  color: var(--text-primary);
+  background: var(--accent-purple);
+  font-weight: 600;
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.meta-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.file-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.file-upload-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--accent-purple);
+}
+
+
+/* ================================================================
+   Footer
+   ================================================================ */
+
+.footer {
+  text-align: center;
+  padding: 2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+}
+
+/* ================================================================
+   Scrollbar
+   ================================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track { background: transparent; }
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }

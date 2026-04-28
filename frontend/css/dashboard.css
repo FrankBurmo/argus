@@ -1,0 +1,240 @@
+/* ================================================================
+   App / Views
+   ================================================================ */
+
+.app {
+  padding: 1.5rem;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.view { animation: fadeIn 0.3s ease; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================================================================
+   Sammendragskort
+   ================================================================ */
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  transition: border-color var(--transition);
+}
+
+.stat-card:hover { border-color: var(--border-light); }
+
+.stat-card .stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.stat-card .stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.stat-card .stat-sub {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.stat-card.stat-success .stat-value { color: var(--success); }
+.stat-card.stat-warning .stat-value { color: var(--warning); }
+.stat-card.stat-danger .stat-value { color: var(--danger); }
+.stat-card.stat-info .stat-value { color: var(--info); }
+
+/* ================================================================
+   Dashboard-grid
+   ================================================================ */
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+
+.card-wide { grid-column: span 1; }
+.card-full { width: 100%; }
+
+.card-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.card-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* ================================================================
+   Chart / Dekningsvisning
+   ================================================================ */
+
+.chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.coverage-row {
+  display: grid;
+  grid-template-columns: 180px 1fr 60px;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.coverage-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coverage-bar-bg {
+  height: 24px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.coverage-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+  position: relative;
+}
+
+.coverage-bar-fill.green { background: linear-gradient(90deg, #16a34a, #22c55e); }
+.coverage-bar-fill.yellow { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.coverage-bar-fill.red { background: linear-gradient(90deg, #dc2626, #ef4444); }
+
+.coverage-pct {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ================================================================
+   Breakdown-lister (prosjekt / sjekk)
+   ================================================================ */
+
+.breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.breakdown-item:hover { background: var(--bg-card-hover); }
+
+.breakdown-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.breakdown-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.breakdown-item-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.breakdown-item-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-critical { background: var(--severity-critical-bg); color: var(--severity-critical); }
+.badge-high { background: var(--severity-high-bg); color: var(--severity-high); }
+.badge-medium { background: var(--severity-medium-bg); color: var(--severity-medium); }
+.badge-low { background: var(--severity-low-bg); color: var(--severity-low); }
+.badge-success { background: var(--success-bg); color: var(--success); }
+.badge-info { background: var(--info-bg); color: var(--info); }
+.badge-na { background: var(--severity-na-bg); color: var(--severity-na); }
+
+.count-badge {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+
+/* ================================================================
+   Prioriteringstabell
+   ================================================================ */
+
+.priority-row-critical { border-left: 3px solid var(--severity-critical); }
+.priority-row-high { border-left: 3px solid var(--severity-high); }
+.priority-row-medium { border-left: 3px solid var(--severity-medium); }
+.priority-row-low { border-left: 3px solid var(--severity-low); }

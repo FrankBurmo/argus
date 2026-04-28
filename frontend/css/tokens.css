@@ -1,0 +1,79 @@
+/* ================================================================
+   Argus Code Security — Datadog-inspirert mørkt tema
+   ================================================================ */
+
+:root {
+  /* Fargepalett — inspirert av Datadog */
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-card: #1e293b;
+  --bg-card-hover: #243348;
+  --bg-sidebar: #0f172a;
+  --bg-input: #0f172a;
+  --bg-topbar: #0d1117;
+  --bg-overlay: rgba(0, 0, 0, 0.6);
+
+  --border: #2d3a4e;
+  --border-light: #374357;
+
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-link: #60a5fa;
+
+  --accent-purple: #7c3aed;
+  --accent-purple-light: #a78bfa;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+
+  --severity-critical: #ef4444;
+  --severity-critical-bg: rgba(239, 68, 68, 0.15);
+  --severity-high: #f97316;
+  --severity-high-bg: rgba(249, 115, 22, 0.15);
+  --severity-medium: #eab308;
+  --severity-medium-bg: rgba(234, 179, 8, 0.15);
+  --severity-low: #22c55e;
+  --severity-low-bg: rgba(34, 197, 94, 0.15);
+  --severity-na: #64748b;
+  --severity-na-bg: rgba(100, 116, 139, 0.15);
+
+  --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.12);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --info: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.12);
+
+  --radius: 8px;
+  --radius-lg: 12px;
+  --transition: 0.2s ease;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+a { color: var(--text-link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.hidden { display: none !important; }

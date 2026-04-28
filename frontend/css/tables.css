@@ -1,0 +1,98 @@
+/* ================================================================
+   Tabeller
+   ================================================================ */
+
+.table-container {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  z-index: 2;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.data-table th:hover { color: var(--text-secondary); }
+.data-table th.sorted-asc::after { content: ' ▲'; font-size: 0.65rem; }
+.data-table th.sorted-desc::after { content: ' ▼'; font-size: 0.65rem; }
+
+.data-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.data-table tbody tr {
+  transition: background var(--transition);
+  cursor: pointer;
+}
+
+.data-table tbody tr:hover {
+  background: var(--bg-card-hover);
+}
+
+.status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status-pass { background: var(--success-bg); color: var(--success); }
+.status-fail { background: var(--danger-bg); color: var(--danger); }
+.status-na { background: var(--severity-na-bg); color: var(--severity-na); }
+.status-warn { background: var(--warning-bg); color: var(--warning); }
+
+.repo-name {
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.project-tag {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: var(--info-bg);
+  color: var(--info);
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-right: 0.4rem;
+}
+
+.severity-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.severity-critical { background: var(--severity-critical-bg); color: var(--severity-critical); }
+.severity-high { background: var(--severity-high-bg); color: var(--severity-high); }
+.severity-medium { background: var(--severity-medium-bg); color: var(--severity-medium); }
+.severity-low { background: var(--severity-low-bg); color: var(--severity-low); }
