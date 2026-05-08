@@ -7,7 +7,7 @@ import { state } from "../state.js";
 import { CHECK_LABELS, CHECK_ICONS } from "../constants/checkLabels.js";
 import { $, escapeHtml } from "../utils/dom.js";
 import { severityLabel } from "../utils/format.js";
-import { assessmentLevel, repoPriorityScore, repoSeverity } from "../utils/assessment.js";
+import { assessmentLevel, repoSeverity } from "../utils/assessment.js";
 
 export function renderSummary() {
   renderSummaryCards();
@@ -174,9 +174,16 @@ function renderPriorityTable() {
   const report = state.report;
   const container = $("#priority-table-container");
 
+  const sevOrder = { critical: 0, high: 1, medium: 2, low: 3 };
   const repos = report.repos
     .filter(r => report.checks.some(c => r.checks[c] === false))
-    .sort((a, b) => repoPriorityScore(b) - repoPriorityScore(a));
+    .sort((a, b) => {
+      const sevDiff = (sevOrder[repoSeverity(a)] ?? 4) - (sevOrder[repoSeverity(b)] ?? 4);
+      if (sevDiff !== 0) return sevDiff;
+      const projDiff = a.project.localeCompare(b.project, "nb");
+      if (projDiff !== 0) return projDiff;
+      return a.repo.localeCompare(b.repo, "nb");
+    });
 
   if (repos.length === 0) {
     container.innerHTML = '<p style="color: var(--success); padding: 1rem;">✅ Alle repos passerer alle sjekker.</p>';
