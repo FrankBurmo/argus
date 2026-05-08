@@ -122,7 +122,7 @@ function renderVulnFilters(allVulns) {
 
   // Prosjekt
   $("#filter-vuln-projects").innerHTML = Object.entries(projCounts)
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => a[0].localeCompare(b[0], "nb"))
     .map(([proj, count]) => `
       <label class="filter-option ${f.projects.includes(proj) ? "active" : ""}">
         <input type="checkbox" ${f.projects.includes(proj) ? "checked" : ""} onchange="toggleVulnFilter('projects', '${escapeHtml(proj)}')">
