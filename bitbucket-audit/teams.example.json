@@ -1,0 +1,45 @@
+{
+  "version": "1",
+  "teams": [
+    {
+      "id": "platform",
+      "name": "Platform Team",
+      "description": "Drifter og utvikler kjerne-infrastruktur og felles tjenester.",
+      "members": ["alice", "bob", "charlie"],
+      "slackChannel": "#team-platform",
+      "repos": [
+        { "project": "INFRA", "repo": "api-gateway" },
+        { "project": "INFRA", "repo": "auth-service" },
+        { "project": "INFRA", "repo": "service-mesh" }
+      ]
+    },
+    {
+      "id": "frontend",
+      "name": "Frontend Team",
+      "description": "Eier alle brukergrensesnitt og web-tjenester.",
+      "members": ["diana", "erik"],
+      "slackChannel": "#team-frontend",
+      "projects": ["FRONTEND", "WEB"]
+    },
+    {
+      "id": "data",
+      "name": "Data & Analytics Team",
+      "description": "Datapipelines, ML-modeller og analytiske tjenester.",
+      "members": ["frank", "greta"],
+      "slackChannel": "#team-data",
+      "projects": ["ANALYTICS"],
+      "repos": [
+        { "project": "DATA", "repo": "etl-pipeline" },
+        { "project": "DATA", "repo": "ml-serving" }
+      ]
+    },
+    {
+      "id": "mobile",
+      "name": "Mobile Team",
+      "description": "iOS- og Android-applikasjoner.",
+      "members": ["hans", "ingrid"],
+      "slackChannel": "#team-mobile",
+      "projects": ["MOBILE", "IOS", "ANDROID"]
+    }
+  ]
+}

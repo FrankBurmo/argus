@@ -38,6 +38,11 @@ export function loadReport(data) {
 
   resetFilters();
 
+  // Sett hasTeams basert på om rapporten inneholder team-data
+  state.hasTeams = Array.isArray(data.teams) && data.teams.length > 0;
+  const teamsNavBtn = document.querySelector('[data-view="teams"]');
+  if (teamsNavBtn) teamsNavBtn.classList.toggle("hidden", !state.hasTeams);
+
   $("#landing").classList.add("hidden");
   $("#app").classList.remove("hidden");
   $("#report-meta").textContent = `Generert ${formatDate(data.generatedAt)} — ${data.summary.total} repos`;

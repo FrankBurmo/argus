@@ -10,6 +10,8 @@ const pooledMap = require("./lib/pool");
 const { buildReport } = require("./lib/report");
 const buildMarkdownReport = require("./lib/reportMarkdown");
 const printReport = require("./lib/reportTerminal");
+const { loadTeamConfig, assignReposToTeams, buildTeamReport } = require("./lib/teamConfig");
+const { buildTeamMarkdownReport } = require("./lib/reportTeam");
 const secret = require("./secret");
 
 // ---------------------------------------------------------------------------
@@ -189,6 +191,35 @@ async function main() {
 
   fs.writeFileSync(jsonPath, JSON.stringify(report, null, 2), "utf8");
   fs.writeFileSync(mdPath, buildMarkdownReport(report, checks), "utf8");
+
+  // Integrer team-data om teams.json finnes i prosjektets rotmappe
+  const teamConfigPath = path.join(__dirname, "..", "teams.json");
+  if (fs.existsSync(teamConfigPath)) {
+    try {
+      const teamConfig = loadTeamConfig(teamConfigPath);
+      const teamAssignment = assignReposToTeams(report.repos, teamConfig);
+      report.teams = buildTeamReport(report.repos, teamConfig, checks);
+      report.teamAssignment = Object.fromEntries(teamAssignment);
+
+      // Skriv oppdatert rapport-JSON med team-data
+      fs.writeFileSync(jsonPath, JSON.stringify(report, null, 2), "utf8");
+
+      // Skriv én markdown-rapport per team
+      for (const team of report.teams) {
+        const teamRepos = report.repos.filter((r) =>
+          (report.teamAssignment[`${r.project}/${r.repo}`] || "unassigned") === team.id
+        );
+        const teamMd = buildTeamMarkdownReport(team, teamRepos, checks);
+        const teamMdPath = path.join(reportsDir, `team-${team.id}-${timestamp}.md`);
+        fs.writeFileSync(teamMdPath, teamMd, "utf8");
+      }
+
+      console.log(`  Teams: ${report.teams.length} team (inkl. unassigned) lagt til rapporten.`);
+    } catch (err) {
+      console.error(`\nAdvarsel: Kunne ikke laste teams.json — ${err.message}`);
+      console.error("Rapport skrives uten team-data.");
+    }
+  }
 
   console.log(`\nRapporter skrevet til:`);
   console.log(`  JSON : ${jsonPath}`);

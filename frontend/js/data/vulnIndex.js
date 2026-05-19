@@ -47,6 +47,16 @@ export function vulnerabilityMatchesFilters(vuln, repo, searchTerm) {
     const wantFix = f.fixAvailable[0] === "yes";
     if (wantFix ? !vuln.fixedIn : !!vuln.fixedIn) return false;
   }
+  // Team-filter: sjekk om repoet tilhører ett av de valgte teamene
+  if (f.team && f.team.length > 0) {
+    const teams = state.report?.teams ?? [];
+    const repoKey = `${repo.project}/${repo.repo}`;
+    const belongs = f.team.some(teamId => {
+      const team = teams.find(t => t.id === teamId);
+      return team && team.repos.includes(repoKey);
+    });
+    if (!belongs) return false;
+  }
   if (searchTerm) {
     const searchable = [
       vuln.id, vuln.cveId, vuln.summary, vuln.package, vuln.ecosystem, ...(vuln.aliases || []),

@@ -8,6 +8,7 @@ import { CHECK_LABELS, CHECK_ICONS } from "../constants/checkLabels.js";
 import { $, escapeHtml } from "../utils/dom.js";
 import { severityLabel } from "../utils/format.js";
 import { assessmentLevel, repoSeverity } from "../utils/assessment.js";
+import { getAllTeams, teamHealthClass, teamHealthLabel } from "../data/teamData.js";
 
 export function renderSummary() {
   renderSummaryCards();
@@ -15,6 +16,7 @@ export function renderSummary() {
   renderProjectBreakdown();
   renderCheckBreakdown();
   renderPriorityTable();
+  renderWorstTeams();
 }
 
 function renderSummaryCards() {
@@ -228,4 +230,51 @@ function renderPriorityTable() {
     </table>
     ${repos.length > 50 ? `<p style="color: var(--text-muted); padding: 0.75rem; font-size: 0.8rem;">Viser topp 50 av ${repos.length} repos med avvik.</p>` : ""}
   `;
+}
+
+function renderWorstTeams() {
+  const teams = getAllTeams();
+
+  // Fjern evt. gammel widget
+  const existingWidget = document.getElementById("worst-teams-widget");
+  if (existingWidget) existingWidget.remove();
+
+  if (teams.length === 0) return;
+
+  // Sorter etter lavest score (unassigned sist)
+  const sorted = [...teams]
+    .filter(t => t.id !== "unassigned")
+    .sort((a, b) => a.overallScore - b.overallScore)
+    .slice(0, 5);
+
+  const rows = sorted.map((t, i) => {
+    const hClass = teamHealthClass(t.overallScore);
+    return `
+      <div class="breakdown-item" onclick="showTeamDetail('${escapeHtml(t.id)}')" style="cursor:pointer">
+        <div class="breakdown-item-left">
+          <div class="breakdown-icon" style="font-weight:700; font-size:0.85rem; background:var(--card-bg); color:var(--text-muted);">${i + 1}</div>
+          <span class="breakdown-item-name">${escapeHtml(t.name)}</span>
+        </div>
+        <div class="breakdown-item-right">
+          <span class="health-badge ${hClass}">${t.overallScore.toFixed(1)}%</span>
+        </div>
+      </div>`;
+  }).join("");
+
+  const widget = document.createElement("div");
+  widget.id = "worst-teams-widget";
+  widget.className = "card";
+  widget.innerHTML = `
+    <h3 class="card-title">Team med lavest score</h3>
+    <div class="breakdown-list">${rows}</div>
+  `;
+
+  // Sett inn etter priority-table
+  const priorityContainer = document.getElementById("priority-table-container");
+  if (priorityContainer && priorityContainer.parentElement) {
+    priorityContainer.parentElement.insertAdjacentElement("afterend", widget);
+  } else {
+    const summaryView = document.getElementById("view-summary");
+    if (summaryView) summaryView.appendChild(widget);
+  }
 }

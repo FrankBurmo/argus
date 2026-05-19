@@ -48,6 +48,7 @@
     </div>
     <nav class="topbar-nav">
       <button class="nav-btn active" data-view="summary">Oversikt</button>
+      <button class="nav-btn hidden" data-view="teams">Team</button>
       <button class="nav-btn" data-view="vulnerabilities">Sårbarheter</button>
       <button class="nav-btn" data-view="repos">Repositories</button>
       <a href="docs.html" class="nav-btn">Dokumentasjon</a>
@@ -282,6 +283,11 @@
             <h4 class="filter-label">Fiks tilgjengelig</h4>
             <div id="filter-fix" class="filter-options"></div>
           </div>
+
+          <div class="filter-group" id="filter-group-vuln-teams" style="display: none;">
+            <h4 class="filter-label">Team</h4>
+            <div id="filter-vuln-teams" class="filter-options"></div>
+          </div>
         </aside>
 
         <div class="explorer-main">
@@ -305,10 +311,21 @@
       <div class="card card-full">
         <div class="explorer-toolbar">
           <input type="text" id="repo-search-input" class="search-input" placeholder="Søk etter repo eller prosjekt...">
+          <div id="repo-team-filter" class="filter-options" style="display: none;"></div>
           <span id="repo-result-count" class="result-count"></span>
         </div>
         <div id="repo-table-container" class="table-container"></div>
       </div>
+    </section>
+
+    <!-- ── Teams-oversikt ── -->
+    <section id="view-teams" class="view hidden">
+      <div id="teams-container"></div>
+    </section>
+
+    <!-- ── Team-detaljside ── -->
+    <section id="view-team-detail" class="view hidden">
+      <div id="team-detail-container"></div>
     </section>
   </main>
 

@@ -13,6 +13,7 @@ import {
   vulnerabilityMatchesFilters,
   buildSummaryForRepos,
 } from "../data/vulnIndex.js";
+import { getAllTeams } from "../data/teamData.js";
 
 export function renderExplorer() {
   const allVulns = buildVulnIndex();
@@ -144,6 +145,20 @@ function renderVulnFilters(allVulns) {
       <span class="option-count">${noFixCount}</span>
     </label>
   `;
+
+  // Team-filter (kun om rapporten har team-data)
+  const teams = getAllTeams();
+  const teamGroupEl = $("#filter-group-vuln-teams");
+  const teamFilterEl = $("#filter-vuln-teams");
+  if (teamGroupEl) teamGroupEl.style.display = teams.length > 0 ? "" : "none";
+  if (teamFilterEl && teams.length > 0) {
+    teamFilterEl.innerHTML = teams.map(t => `
+      <label class="filter-option ${(f.team || []).includes(t.id) ? "active" : ""}">
+        <input type="checkbox" ${(f.team || []).includes(t.id) ? "checked" : ""} onchange="toggleVulnFilter('team', '${escapeHtml(t.id)}')">
+        ${escapeHtml(t.name)}
+      </label>
+    `).join("");
+  }
 }
 
 export function renderVulnList(allVulns) {

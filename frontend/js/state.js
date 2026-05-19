@@ -15,14 +15,26 @@ export const state = {
   report: null,
   /** Anriket sjekk-metadata: [{ id, label, icon }]. */
   checkMeta: [],
-  /** Aktiv visning: "summary" | "vulnerabilities" | "repos". */
+  /** Aktiv visning: "summary" | "vulnerabilities" | "repos" | "teams" | "team-detail". */
   activeView: "summary",
+  /** Om den lastede rapporten inneholder team-data. Styrer synlighet av Team-UI. */
+  hasTeams: false,
+  /** Aktiv team-ID for detaljvisning (null = team-liste). */
+  activeTeam: null,
+  /** Filtre og sortering i Teams-fanen. */
+  teamFilters: {
+    sortBy: "score",       // "score" | "name" | "repos"
+    sortDir: "asc",        // "asc" (lavest score først) | "desc"
+    criticalOnly: false,
+    withVulnsOnly: false,
+  },
   /** Filtre i Repos-/Sammendrag-fanen. */
   activeFilters: {
     status: [],
     checks: [],
     projects: [],
     assessment: [],
+    team: [],
   },
   /** Filtre i Sårbarheter-fanen. */
   vulnFilters: {
@@ -30,10 +42,13 @@ export const state = {
     ecosystem: [],
     projects: [],
     fixAvailable: [],
+    team: [],
   },
 };
 
 export function resetFilters() {
-  state.activeFilters = { status: [], checks: [], projects: [], assessment: [] };
-  state.vulnFilters = { severity: [], ecosystem: [], projects: [], fixAvailable: [] };
+  state.activeFilters = { status: [], checks: [], projects: [], assessment: [], team: [] };
+  state.vulnFilters = { severity: [], ecosystem: [], projects: [], fixAvailable: [], team: [] };
+  state.hasTeams = false;
+  state.activeTeam = null;
 }

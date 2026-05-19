@@ -100,10 +100,78 @@ export function generateDemoData() {
     };
   }
 
+  // ---------------------------------------------------------------------------
+  // Team-data — beregnet fra repo-resultatene
+  // ---------------------------------------------------------------------------
+
+  const CHECK_CATEGORIES = {
+    sikkerhet:  ["secrets", "branch-protection", "dep-vulns", "npm-audit", "owasp-dep-check"],
+    devops:     ["pipeline", "renovate", "linting", "tests", "pr-activity"],
+    governance: ["readme", "stale", "codeowners"],
+  };
+
+  const demoTeams = [
+    { id: "platform", name: "Platform Team",         description: "Drifter og utvikler kjerne-infrastruktur og felles tjenester.", members: ["alice", "bob", "charlie"], slackChannel: "#team-platform", project: "PLATFORM" },
+    { id: "frontend", name: "Frontend Team",          description: "Eier alle brukergrensesnitt og web-tjenester.",                  members: ["diana", "erik"],           slackChannel: "#team-frontend",  project: "FRONTEND" },
+    { id: "backend",  name: "Backend Team",           description: "Kjernelogikk, API-er og mikrotjenester.",                        members: ["frank", "greta"],          slackChannel: "#team-backend",   project: "BACKEND"  },
+    { id: "data",     name: "Data & Analytics Team",  description: "Datapipelines, ML-modeller og analytiske tjenester.",            members: ["hans"],                    slackChannel: "#team-data",      project: "DATA"     },
+    { id: "mobile",   name: "Mobile Team",            description: "iOS- og Android-applikasjoner.",                                 members: ["ingrid", "john"],          slackChannel: "#team-mobile",    project: "MOBILE"   },
+  ];
+
+  const teams = demoTeams.map(({ id, name, description, members, slackChannel, project }) => {
+    const teamRepos = repos.filter(r => r.project === project);
+    const teamByCheck = {};
+
+    for (const checkId of checkIds) {
+      const passed = teamRepos.filter(r => r.checks[checkId] === true).length;
+      const na     = teamRepos.filter(r => r.checks[checkId] === null).length;
+      const failed = teamRepos.filter(r => r.checks[checkId] === false).length;
+      const applicable = teamRepos.length - na;
+      const score = applicable > 0 ? +((passed / applicable) * 100).toFixed(1) : null;
+      teamByCheck[checkId] = { passed, failed, na, score };
+    }
+
+    const categoryScores = {};
+    for (const [cat, catChecks] of Object.entries(CHECK_CATEGORIES)) {
+      const scores = catChecks.map(cid => teamByCheck[cid]?.score).filter(s => s !== null && s !== undefined);
+      categoryScores[cat] = scores.length > 0
+        ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
+        : null;
+    }
+
+    const allScores = Object.values(teamByCheck).map(c => c.score).filter(s => s !== null && s !== undefined);
+    const overallScore = allScores.length > 0
+      ? +(allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1)
+      : 0;
+
+    const vulnerabilities = { total: 0, critical: 0, high: 0, medium: 0, low: 0 };
+    for (const repo of teamRepos) {
+      for (const v of (repo.vulnerabilities || [])) {
+        vulnerabilities.total++;
+        const sev = (v.severity || "").toUpperCase();
+        if (sev === "CRITICAL")    vulnerabilities.critical++;
+        else if (sev === "HIGH")   vulnerabilities.high++;
+        else if (sev === "MEDIUM") vulnerabilities.medium++;
+        else if (sev === "LOW")    vulnerabilities.low++;
+      }
+    }
+
+    return {
+      id, name, description, slackChannel, members,
+      repoCount: teamRepos.length,
+      overallScore,
+      categoryScores,
+      byCheck: teamByCheck,
+      vulnerabilities,
+      repos: teamRepos.map(r => `${r.project}/${r.repo}`),
+    };
+  });
+
   return {
     generatedAt: new Date().toISOString(),
     checks: checkIds,
     summary: { total: repos.length, byCheck },
     repos,
+    teams,
   };
 }

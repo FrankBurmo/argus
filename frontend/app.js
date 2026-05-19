@@ -15,10 +15,12 @@ import { generateDemoData } from "./js/data/demo.js";
 import { buildVulnIndex } from "./js/data/vulnIndex.js";
 import { switchView } from "./js/views/router.js";
 import { renderVulnList, toggleVulnFilter, exportFilteredIssuesJson } from "./js/views/vulnerabilities.js";
-import { renderRepoTable, toggleFilter, filterByProject, filterByCheck } from "./js/views/repos.js";
+import { renderRepoTable, toggleFilter, filterByProject, filterByCheck, setRepoTeamFilter } from "./js/views/repos.js";
 import { showVulnDetail, exportVulnDetailHtml, exportVulnDetailMarkdown } from "./js/details/vulnDetail.js";
 import { showRepoDetail } from "./js/details/repoDetail.js";
 import { closeDetail } from "./js/details/panel.js";
+import { showTeamDetail, switchToTeams, setTeamSort, setTeamFilter, toggleTeamCheckRow, filterVulnsByTeam } from "./js/views/teams.js";
+import { exportTeamReport } from "./js/utils/download.js";
 
 // ---------------------------------------------------------------------------
 // Globale handlere — kreves av inline onclick="..." i innerHTML-strenger.
@@ -27,11 +29,19 @@ window.toggleVulnFilter = toggleVulnFilter;
 window.toggleFilter = toggleFilter;
 window.filterByProject = filterByProject;
 window.filterByCheck = filterByCheck;
+window.setRepoTeamFilter = setRepoTeamFilter;
 window.showVulnDetail = showVulnDetail;
 window.showRepoDetail = showRepoDetail;
 window.exportVulnDetailHtml = exportVulnDetailHtml;
 window.exportVulnDetailMarkdown = exportVulnDetailMarkdown;
 window.exportFilteredIssuesJson = exportFilteredIssuesJson;
+window.showTeamDetail = showTeamDetail;
+window.switchToTeams = switchToTeams;
+window.setTeamSort = setTeamSort;
+window.setTeamFilter = setTeamFilter;
+window.toggleTeamCheckRow = toggleTeamCheckRow;
+window.filterVulnsByTeam = filterVulnsByTeam;
+window.exportTeamReport = exportTeamReport;
 
 // ---------------------------------------------------------------------------
 // Event-lyttere
