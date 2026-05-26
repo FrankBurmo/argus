@@ -335,11 +335,47 @@ async function getStaleEcosystems(ecosystems: string[]): Promise<string[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Hjelpefunksjon for begrenset parallellitet
+// ---------------------------------------------------------------------------
+
+/**
+ * Kjører et sett med asynkrone oppgaver med maks `concurrency` parallelt.
+ * Trygt i Node.js — JavaScript er entrådet, så index-telleren er atomisk.
+ */
+async function runConcurrent<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number
+): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  let index = 0;
+
+  async function worker(): Promise<void> {
+    while (index < tasks.length) {
+      const i = index++;
+      results[i] = await tasks[i]();
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, tasks.length) },
+    () => worker()
+  );
+  await Promise.all(workers);
+  return results;
+}
+
+// ---------------------------------------------------------------------------
 // Synkronisering av økosystemer
 // ---------------------------------------------------------------------------
 
 async function syncEcosystems(ecosystems: string[]): Promise<void> {
-  for (const eco of ecosystems) {
+  const concurrency = Math.max(
+    1,
+    parseInt(process.env.OSV_LOCAL_SYNC_CONCURRENCY ?? "3", 10)
+  );
+  log(`Synkroniserer ${ecosystems.length} økosystem(er) med maks ${concurrency} parallelt...`);
+
+  const tasks = ecosystems.map((eco) => async () => {
     const lastSynced = await getLastSyncedAt(eco);
     const hasData = lastSynced && (await getVulnCountForEcosystem(eco)) > 0;
 
@@ -360,7 +396,12 @@ async function syncEcosystems(ecosystems: string[]): Promise<void> {
         );
       }
     }
-  }
+  });
+
+  await runConcurrent(tasks, concurrency);
+
+  // Lagre databasen til disk én gang etter at alle synker er ferdige
+  saveDb();
 }
 
 // ---------------------------------------------------------------------------
