@@ -31,10 +31,11 @@ function isVersionAffected(
   const v = semver.valid(semver.coerce(version));
   if (!v) return false;
 
+  const introducedV = introduced && introduced !== "0" ? semver.coerce(introduced) : null;
   const introducedOk =
     !introduced ||
     introduced === "0" ||
-    semver.gte(v, semver.coerce(introduced)!.version);
+    (introducedV ? semver.gte(v, introducedV.version) : true);
 
   if (!introducedOk) return false;
 
