@@ -47,6 +47,12 @@ window.exportTeamReport = exportTeamReport;
 // Event-lyttere
 // ---------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
+  // Last inn team-konfig fra teams.json (valgfri statisk fil i frontend-roten)
+  fetch("teams.json")
+    .then((r) => r.ok ? r.json() : null)
+    .then((json) => { if (json?.teams) state.teamsConfig = json; })
+    .catch(() => {}); // Ignorer feil — teams.json er valgfri
+
   // Navigasjon
   $$(".nav-btn[data-view]").forEach(btn => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
