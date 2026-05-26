@@ -120,3 +120,4 @@ Når en sjekk feiler for et repo, viser detaljpanelet et **handlingskort** med k
 - **Dokumentasjonslenke** — Direkte lenke til relevant ekstern dokumentasjon.
 
 Kortene er sammenleggbare (ekspanderbar via klikk) og fargekodet etter alvorlighetsgrad. Data defineres i `CHECK_REMEDIATION`-objektet i `app.js`.
+
