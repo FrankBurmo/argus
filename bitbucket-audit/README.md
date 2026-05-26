@@ -52,6 +52,7 @@ Genererer:
 - Oppsummeringsrapport med vurderinger i konsollen
 - `audit-report.json` i gjeldende mappe
 
+
 ## Eksempel på utskrift
 
 ```
