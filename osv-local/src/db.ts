@@ -116,7 +116,6 @@ export async function setLastSyncedAt(ecosystem: string, ts: string): Promise<vo
     "INSERT OR REPLACE INTO sync_state (ecosystem, last_synced_at) VALUES (?, ?)",
     [ecosystem, ts]
   );
-  saveDb();
 }
 
 export async function getVulnCountForEcosystem(ecosystem: string): Promise<number> {
