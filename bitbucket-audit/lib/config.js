@@ -25,7 +25,6 @@ const config = {
   MAX_REPOS: parseInt(process.env.MAX_REPOS, 10) || 0, // 0 = ingen grense
   PROJECT_KEY,
   OUTPUT_FORMAT,
-  TEAM_REPOS_MAPPING: process.env.TEAM_REPOS_MAPPING || null,
 };
 
 function validateEnv() {

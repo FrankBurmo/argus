@@ -19,6 +19,8 @@ export const state = {
   activeView: "summary",
   /** Om den lastede rapporten inneholder team-data. Styrer synlighet av Team-UI. */
   hasTeams: false,
+  /** Innlastet teams.json-konfig (null hvis ikke tilgjengelig). */
+  teamsConfig: null,
   /** Aktiv team-ID for detaljvisning (null = team-liste). */
   activeTeam: null,
   /** Filtre og sortering i Teams-fanen. */
