@@ -12,6 +12,7 @@ const buildMarkdownReport = require("./lib/reportMarkdown");
 const printReport = require("./lib/reportTerminal");
 const { loadTeamConfig, assignReposToTeams, buildTeamReport } = require("./lib/teamConfig");
 const { buildTeamMarkdownReport } = require("./lib/reportTeam");
+const { loadOwnership, buildLookupMap, enrichRepos, buildByTeam } = require("./lib/teamOwnership");
 const secret = require("./secret");
 
 // ---------------------------------------------------------------------------
@@ -47,6 +48,20 @@ async function main() {
   // Last inn sjekkere
   const checks = require("./checks");
   const checkIds = checks.map((c) => c.id).join(", ");
+
+  // Hent team-eierskap tidlig slik at status vises før repo-scanning starter
+  let ownershipJson = null;
+  try {
+    ownershipJson = await loadOwnership(config.TEAM_REPOS_MAPPING, request);
+    if (ownershipJson) {
+      const products = Object.keys(ownershipJson);
+      const teamEntries = products.flatMap((p) => Object.keys(ownershipJson[p]).map((t) => `${p}/${t}`));
+      console.log(`Team-eierskap hentet (${products.length} produkt(er), ${teamEntries.length} team(er)): ${teamEntries.join(", ")}`);
+    }
+  } catch (err) {
+    console.error(`Advarsel: Kunne ikke laste team-eierskap — ${err.message}`);
+    console.error("Rapport skrives uten team-eierskap.");
+  }
 
   // Hent prosjekter — ett spesifikt eller alle
   let projects;
@@ -181,6 +196,16 @@ async function main() {
 
   // Bygg og skriv rapport
   const report = buildReport(repoResults, checks);
+
+  // Berik med team-eierskap (data allerede hentet før scanning)
+  if (ownershipJson) {
+    const lookupMap = buildLookupMap(ownershipJson);
+    enrichRepos(report.repos, lookupMap);
+    report.summary.byTeam = buildByTeam(report.repos, checks, ownershipJson);
+    const assignedCount = report.repos.filter((r) => r.team !== null).length;
+    const unassignedCount = report.repos.length - assignedCount;
+    console.log(`\nTeam-tilknytning: ${assignedCount} repos tilknyttet, ${unassignedCount} uten team (unassigned)`);
+  }
 
   const reportsDir = path.join(process.cwd(), "reports");
   if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
