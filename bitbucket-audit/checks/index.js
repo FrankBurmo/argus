@@ -7,7 +7,7 @@ module.exports = [
   require("./depVulns"),
   require("./codeowners"),
   require("./pipeline"),
-  require("./branchProtection"),
+  //require("./branchProtection"),
   require("./secrets"),
   require("./stale"),
   require("./readme"),

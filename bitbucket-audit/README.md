@@ -35,10 +35,11 @@ Etter første kjøring hentes tokenet automatisk. Du kan fortsatt overstyre ved 
 
 | Variabel          | Kilde           | Beskrivelse                                            |
 | ----------------- | --------------- | ------------------------------------------------------ |
-| `BITBUCKET_URL`   | `.env` / shell  | Base-URL til Bitbucket Server/Data Center (**påkrevd**)|
-| `BITBUCKET_TOKEN` | Sikker lagring  | Personal Access Token med `PROJECT_READ`/`REPO_READ`   |
-| `CONCURRENCY`     | `.env` / shell  | Antall samtidige repo-sjekker (default `5`)            |
-| `MAX_REPOS`       | `.env` / shell  | Maks antall repos å sjekke, sortert alfabetisk (default `0` = ingen grense) |
+| `BITBUCKET_URL`      | `.env` / shell  | Base-URL til Bitbucket Server/Data Center (**påkrevd**)|
+| `BITBUCKET_TOKEN`    | Sikker lagring  | Personal Access Token med `PROJECT_READ`/`REPO_READ`   |
+| `CONCURRENCY`        | `.env` / shell  | Antall samtidige repo-sjekker (default `5`)            |
+| `MAX_REPOS`          | `.env` / shell  | Maks antall repos å sjekke, sortert alfabetisk (default `0` = ingen grense) |
+| `TEAM_REPOS_MAPPING` | `.env` / shell  | Absolutt URL til JSON-fil med product/team/repo-mapping (valgfri) |
 
 ## Kjør
 
@@ -172,6 +173,56 @@ Det er alt. Resten av systemet plukker opp sjekken automatisk.
 | `STALE_MONTHS` | `12` | Antall måneder uten commit før repoet regnes som inaktivt |
 | `PR_MONTHS` | `6` | Tidsvindu (måneder) for å vurdere PR-aktivitet |
 
+## Team-eierskap
+
+Argus støtter valgfri team-mapping via en JSON-fil publisert på en HTTP(S)-URL (f.eks. i Bitbucket). Sett miljøvariabelen `TEAM_REPOS_MAPPING` i `.env` til den absolutte URL-en:
+
+```dotenv
+TEAM_REPOS_MAPPING=https://bitbucket.eksempel.no/raw/team-repos-mapping.json
+```
+
+JSON-strukturen grupperer repos under produkt og team:
+
+```json
+{
+  "akr": {
+    "ferrari": [
+      { "project": "ATLAS", "slug": "atlas-api" },
+      { "project": "ATLAS", "slug": "atlas-worker" }
+    ],
+    "lamborghini": [
+      { "project": "VEG", "slug": "vegkart" }
+    ]
+  }
+}
+```
+
+Oppslag skjer på `project` + `slug` (ikke bare prosjektnøkkel). Første match vinner ved duplikater.
+
+Når `TEAM_REPOS_MAPPING` er satt, beriker Argus rapporten automatisk:
+
+- Hvert repo-objekt får et `team`-felt: `{ "product": "akr", "id": "ferrari" }` — eller `null` om repoet ikke er kartlagt.
+- `summary.byTeam` legges til med per-team statistikk. Nøkkelen er `"product/teamId"` (compound) for å unngå kollisjoner på tvers av produkter. Repos uten treff samles i en `"unassigned"`-gruppe.
+
+```json
+"byTeam": {
+  "akr/ferrari": {
+    "name": "akr/ferrari",
+    "repoCount": 12,
+    "byCheck": {
+      "renovate": { "passed": 8, "failed": 4, "coveragePercent": 66.7 }
+    }
+  },
+  "unassigned": {
+    "name": "Unassigned",
+    "repoCount": 5,
+    "byCheck": { ... }
+  }
+}
+```
+
+Er `TEAM_REPOS_MAPPING` ikke satt, fortsetter Argus som normalt uten feil og uten `team`-felt i rapporten.
+
 ## Rapportformat
 
 Rapporten skrives til `audit-report.json` med følgende struktur:
@@ -191,6 +242,7 @@ Rapporten skrives til `audit-report.json` med følgende struktur:
     {
       "project": "PLATTFORM",
       "repo": "atlas-api",
+      "team": { "product": "akr", "id": "ferrari" },
       "checks": { "renovate": true, "owasp-dep-check": false },
       "assessments": {
         "owasp-dep-check": "Anbefalt — har Jenkinsfile og avhengigheter (package.json), men OWASP Dependency-Check mangler i pipeline."
