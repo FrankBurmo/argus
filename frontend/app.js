@@ -9,8 +9,9 @@
 "use strict";
 
 import { state } from "./js/state.js";
-import { $, $$ } from "./js/utils/dom.js";
-import { handleFile, loadReport } from "./js/data/report.js";
+import { $, $$, toast } from "./js/utils/dom.js";
+import { handleFile, loadReport, reapplyTeams } from "./js/data/report.js";
+import { loadTeamMappingFromStorage, saveTeamMapping, validateTeamMapping } from "./js/data/teamMapping.js";
 import { generateDemoData } from "./js/data/demo.js";
 import { buildVulnIndex } from "./js/data/vulnIndex.js";
 import { switchView } from "./js/views/router.js";
@@ -46,11 +47,27 @@ window.exportTeamReport = exportTeamReport;
 // ---------------------------------------------------------------------------
 // Event-lyttere
 // ---------------------------------------------------------------------------
+/** Oppdater visuell status-badge for team-mapping i topplinjen. */
+function updateTeamMappingStatus(active) {
+  const badge = document.getElementById("team-mapping-status");
+  if (!badge) return;
+  badge.textContent = active ? "Mapping aktiv" : "Ingen mapping";
+  badge.classList.toggle("mapping-status--active", active);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  // Gjenopprett team-mapping fra localStorage (tar prioritet over statisk teams.json)
+  const savedMapping = loadTeamMappingFromStorage();
+  if (savedMapping) state.teamsConfig = savedMapping;
+  updateTeamMappingStatus(!!savedMapping);
+
   // Last inn team-konfig fra teams.json (valgfri statisk fil i frontend-roten)
   fetch("teams.json")
     .then((r) => r.ok ? r.json() : null)
-    .then((json) => { if (json?.teams) state.teamsConfig = json; })
+    .then((json) => {
+      // Statisk teams.json settes bare om ingen localStorage-mapping allerede er satt
+      if (json?.teams && !state.teamsConfig) state.teamsConfig = json;
+    })
     .catch(() => {}); // Ignorer feil — teams.json er valgfri
 
   // Navigasjon
@@ -86,6 +103,33 @@ document.addEventListener("DOMContentLoaded", () => {
   demoBtns.forEach(btn => {
     if (btn) btn.addEventListener("click", () => loadReport(generateDemoData()));
   });
+
+  // Team-mapping opplasting
+  const teamMappingInput = $("#team-mapping-input");
+  if (teamMappingInput) {
+    teamMappingInput.addEventListener("change", (e) => {
+      if (!e.target.files.length) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const parsed = JSON.parse(ev.target.result);
+          if (!validateTeamMapping(parsed)) {
+            toast("Ugyldig team-mapping — filen mangler teams-array.");
+            return;
+          }
+          saveTeamMapping(parsed);
+          state.teamsConfig = parsed;
+          updateTeamMappingStatus(true);
+          reapplyTeams();
+          toast("Team-mapping lastet!");
+        } catch (err) {
+          toast("Kunne ikke lese JSON: " + err.message);
+        }
+      };
+      reader.readAsText(e.target.files[0]);
+      e.target.value = ""; // Reset slik at samme fil kan lastes opp på nytt
+    });
+  }
 
   // Detaljpanel lukking
   const detailClose = $("#detail-close");

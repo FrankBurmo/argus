@@ -113,6 +113,23 @@
   border-color: var(--accent-purple);
 }
 
+.mapping-status {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: all var(--transition);
+}
+
+.mapping-status--active {
+  background: var(--success-bg);
+  border-color: var(--success);
+  color: var(--success);
+}
+
 
 /* ================================================================
    Footer
