@@ -1,0 +1,147 @@
+/* ================================================================
+   Sjekk-detaljvisning
+   ================================================================ */
+
+/* ── Header ── */
+.check-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+}
+
+.back-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+  transition: color var(--transition), border-color var(--transition);
+  white-space: nowrap;
+}
+.back-btn:hover {
+  color: var(--text);
+  border-color: var(--border-light);
+}
+
+.check-detail-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.check-detail-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.check-detail-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.check-detail-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+/* ── Sections ── */
+.check-detail-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Top border accent per seksjon */
+.check-detail-failing {
+  border-top: 3px solid var(--severity-critical);
+}
+
+.check-detail-passing {
+  border-top: 3px solid var(--success);
+}
+
+.check-detail-na {
+  border-top: 3px solid var(--border-light);
+}
+
+/* ── Prosjektgruppe ── */
+.check-detail-project-group {
+  margin-bottom: 0.5rem;
+}
+.check-detail-project-group:last-child {
+  margin-bottom: 0;
+}
+
+.check-detail-project-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.25rem;
+}
+
+.check-detail-project-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ── Repo-rad ── */
+.check-detail-repo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.check-detail-repo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.check-detail-repo-row:hover {
+  background: var(--bg-card-hover);
+}
+
+.check-detail-repo-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.check-detail-repo-right {
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+
+.check-detail-assessment {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60vw;
+}
+
+.check-detail-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+  margin: 0;
+}

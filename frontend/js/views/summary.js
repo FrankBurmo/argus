@@ -85,7 +85,7 @@ function renderCoverageChart() {
     const label = CHECK_LABELS[checkId] || checkId;
 
     html += `
-      <div class="coverage-row">
+      <div class="coverage-row" style="cursor:pointer" onclick="filterByCheck('${escapeHtml(checkId)}')">
         <span class="coverage-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
         <div class="coverage-bar-bg">
           <div class="coverage-bar-fill ${colorClass}" style="width: ${pct}%"></div>
