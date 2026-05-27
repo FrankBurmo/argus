@@ -8,14 +8,14 @@ import { $, $$ } from "../utils/dom.js";
 import { renderSummary } from "./summary.js";
 import { renderExplorer } from "./vulnerabilities.js";
 import { renderRepos } from "./repos.js";
-import { renderTeamList, renderTeamDetail } from "./teams.js";
+import { renderTeamList, renderTeamDetail, renderTeamAdmin } from "./teams.js";
 
 /** Bytt aktiv visning og rendre den. */
 export function switchView(view) {
   state.activeView = view;
 
-  // team-detail er en delvisning av teams — hold "teams"-knappen aktiv
-  const navView = view === "team-detail" ? "teams" : view;
+  // team-detail og team-admin er delvisninger av teams — hold "teams"-knappen aktiv
+  const navView = (view === "team-detail" || view === "team-admin") ? "teams" : view;
   $$(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === navView));
   $$(".view").forEach(v => v.classList.add("hidden"));
 
@@ -39,6 +39,10 @@ export function renderActiveView() {
     case "team-detail":
       if (!state.hasTeams || !state.activeTeam) { switchView("teams"); return; }
       renderTeamDetail(state.activeTeam);
+      break;
+    case "team-admin":
+      if (!state.hasTeams || !state.activeTeam) { switchView("teams"); return; }
+      renderTeamAdmin(state.activeTeam);
       break;
   }
 }

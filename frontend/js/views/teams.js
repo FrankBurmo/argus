@@ -290,8 +290,13 @@ export function renderTeamDetail(teamId) {
        ${allVulns.length > 10 ? `<button class="team-view-all-link" onclick="filterVulnsByTeam('${escapeHtml(team.id)}')">Vis alle ${allVulns.length} sårbarheter →</button>` : ""}`
     : `<p style="color: var(--color-good);">✅ Ingen kjente sårbarheter for dette teamets repos.</p>`;
 
+  // Admin er på separat side («team-admin»-visning)
+
   container.innerHTML = `
-    <button class="team-detail-back" onclick="switchToTeams()">← Alle team</button>
+    <div class="team-detail-actions">
+      <button class="team-detail-back" onclick="switchToTeams()">← Alle team</button>
+      ${state.teamsConfig ? `<button class="btn-admin-team" onclick="showTeamAdmin('${escapeHtml(team.id)}')"> ⚙ Administrer team</button>` : ""}
+    </div>
 
     <div class="team-detail-header">
       <div class="team-detail-avatar">${escapeHtml(initials)}</div>
@@ -346,12 +351,195 @@ export function renderTeamDetail(teamId) {
 }
 
 // ---------------------------------------------------------------------------
+// renderTeamAdmin — separat admin-side for ett team
+// ---------------------------------------------------------------------------
+
+export function renderTeamAdmin(teamId) {
+  const container = document.getElementById("team-admin-container");
+  if (!container) return;
+
+  const team = getTeamData(teamId);
+  if (!team) {
+    container.innerHTML = `<div class="teams-empty">Fant ikke team med ID '${escapeHtml(teamId)}'.</div>`;
+    return;
+  }
+
+  const teamRepoObjects = getTeamRepos(teamId);
+
+  container.innerHTML = `
+    <div class="team-detail-actions">
+      <button class="team-detail-back" onclick="showTeamDetail('${escapeHtml(team.id)}')"> ← Tilbake til teamstatus</button>
+      <button class="btn-export-mapping" onclick="downloadTeamMapping()">⬇ Eksporter team-mapping</button>
+    </div>
+
+    <div class="team-admin-page-header">
+      <h2>⚙ Administrer: ${escapeHtml(team.name)}</h2>
+    </div>
+
+    <div class="card card-full team-admin-card">
+      <h3 class="card-title">Team-innstillinger</h3>
+      <div class="team-admin-form">
+        <div class="team-admin-field">
+          <label>Slack-kanal</label>
+          <input type="text" id="admin-slack" placeholder="#team-navn"
+                 value="${escapeHtml(team.slackChannel || "")}" />
+        </div>
+        <div class="team-admin-field">
+          <label>Beskrivelse</label>
+          <input type="text" id="admin-desc" placeholder="Kort beskrivelse av teamet"
+                 value="${escapeHtml(team.description || "")}" />
+        </div>
+        <div class="team-admin-field">
+          <label>Medlemmer <span class="team-admin-field-hint">(kommaseparert)</span></label>
+          <input type="text" id="admin-members" placeholder="alice, bob, charlie"
+                 value="${escapeHtml((team.members || []).join(", "))}" />
+        </div>
+        <button class="btn-save-meta" onclick="saveTeamMeta('${escapeHtml(team.id)}')">Lagre innstillinger</button>
+      </div>
+    </div>
+
+    <div class="card card-full team-admin-card">
+      <h3 class="card-title">📁 Repos eid av teamet (${teamRepoObjects.length})</h3>
+      ${renderOwnedReposSection(team.id, teamRepoObjects)}
+    </div>
+
+    <div class="card card-full team-admin-card">
+      <h3 class="card-title">➕ Legg til repos i teamet</h3>
+      <p class="team-admin-hint">Repos som ikke er tilordnet dette teamet. Klikk for å legge til.</p>
+      <input type="text" id="admin-repo-search" class="team-unowned-search"
+             placeholder="Søk etter repo..." oninput="filterUnownedRepos()" />
+      ${renderUnownedReposSection(team.id, teamRepoObjects)}
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Admin-hjelpere — eide og ikke-eide repos
+// ---------------------------------------------------------------------------
+
+/**
+ * Bygg HTML for listen over repos eid av teamet, gruppert per Bitbucket-prosjekt.
+ * Eksplisitte repos (fra repos[]) får fjern-knapp; prosjekt-baserte repos får ℹ-indikator.
+ */
+function renderOwnedReposSection(teamId, teamRepoObjects) {
+  if (teamRepoObjects.length === 0) {
+    return `<p style="color:var(--text-muted); padding:0.5rem 0;">Ingen repos tilordnet dette teamet ennå.</p>`;
+  }
+
+  // Finn eksplisitte repos fra rå konfig
+  const cfgTeam     = state.teamsConfig?.teams.find(t => t.id === teamId);
+  const explicitSet = new Set((cfgTeam?.repos || []).map(r => `${r.project}/${r.repo}`));
+
+  // Grupper etter prosjekt, sorter
+  const byProject = new Map();
+  for (const repo of teamRepoObjects) {
+    if (!byProject.has(repo.project)) byProject.set(repo.project, []);
+    byProject.get(repo.project).push(repo);
+  }
+  const sortedProjects = [...byProject.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+
+  return sortedProjects.map(([project, repos]) => {
+    const reposSorted = [...repos].sort((a, b) => a.repo.localeCompare(b.repo));
+    const rows = reposSorted.map(repo => {
+      const key        = `${repo.project}/${repo.repo}`;
+      const isExplicit = explicitSet.has(key);
+      const action     = isExplicit
+        ? `<button class="btn-remove-repo"
+                   onclick="removeRepoFromTeam('${escapeHtml(teamId)}','${escapeHtml(repo.project)}','${escapeHtml(repo.repo)}')"
+                   title="Fjern fra teamet">✕</button>`
+        : `<span class="repo-implicit-badge"
+                 title="Tilordnet via projects[]-mapping i konfigen — rediger konfig-filen for å endre.">ℹ</span>`;
+      return `<div class="repo-row">
+        <span class="repo-row-name">${escapeHtml(repo.repo)}</span>
+        ${action}
+      </div>`;
+    }).join("");
+
+    return `<div class="repo-group">
+      <div class="repo-group-header">
+        <span class="project-tag">${escapeHtml(project)}</span>
+        <span class="repo-group-count">${repos.length}</span>
+      </div>
+      <div class="repo-group-list">${rows}</div>
+    </div>`;
+  }).join("");
+}
+
+/**
+ * Bygg HTML for listen over repos IKKE eid av teamet, gruppert per Bitbucket-prosjekt.
+ */
+function renderUnownedReposSection(teamId, teamRepoObjects) {
+  if (!state.report?.repos) return "";
+
+  const ownedSet = new Set(teamRepoObjects.map(r => `${r.project}/${r.repo}`));
+  const unowned  = state.report.repos.filter(r => !ownedSet.has(`${r.project}/${r.repo}`));
+
+  if (unowned.length === 0) {
+    return `<p style="color:var(--color-good); padding:0.5rem 0;">✓ Alle repos i rapporten er allerede tilordnet dette teamet.</p>`;
+  }
+
+  const byProject = new Map();
+  for (const repo of unowned) {
+    if (!byProject.has(repo.project)) byProject.set(repo.project, []);
+    byProject.get(repo.project).push(repo);
+  }
+  const sortedProjects = [...byProject.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+
+  const groups = sortedProjects.map(([project, repos]) => {
+    const reposSorted = [...repos].sort((a, b) => a.repo.localeCompare(b.repo));
+    const rows = reposSorted.map(repo => `
+      <div class="repo-row repo-unowned-item"
+           data-search="${escapeHtml(repo.repo.toLowerCase())} ${escapeHtml(project.toLowerCase())}">
+        <span class="repo-row-name">${escapeHtml(repo.repo)}</span>
+        <button class="btn-add-repo"
+                onclick="addRepoToTeam('${escapeHtml(teamId)}','${escapeHtml(repo.project)}','${escapeHtml(repo.repo)}')"
+                title="Legg til i teamet">+ Legg til</button>
+      </div>`).join("");
+
+    return `<div class="repo-group repo-unowned-group">
+      <div class="repo-group-header">
+        <span class="project-tag">${escapeHtml(project)}</span>
+        <span class="repo-group-count">${repos.length}</span>
+      </div>
+      <div class="repo-group-list">${rows}</div>
+    </div>`;
+  }).join("");
+
+  return `<div id="unowned-repos-list">${groups}</div>`;
+}
+
+// ---------------------------------------------------------------------------
 // Globale hjelpere eksponert via app.js → window
 // ---------------------------------------------------------------------------
+
+/** Klient-side søkefiltrering i ikke-eide repos-listen. */
+export function filterUnownedRepos() {
+  const input  = document.getElementById("admin-repo-search");
+  const term   = (input?.value ?? "").toLowerCase().trim();
+  const items  = document.querySelectorAll(".repo-unowned-item");
+  const groups = document.querySelectorAll(".repo-unowned-group");
+
+  items.forEach(item => {
+    const match = !term || (item.dataset.search || "").includes(term);
+    item.style.display = match ? "" : "none";
+  });
+
+  // Skjul prosjektgrupper uten synlige repos
+  groups.forEach(group => {
+    const anyVisible = [...group.querySelectorAll(".repo-unowned-item")]
+      .some(el => el.style.display !== "none");
+    group.style.display = anyVisible ? "" : "none";
+  });
+}
 
 export function showTeamDetail(teamId) {
   state.activeTeam = teamId;
   switchView("team-detail");
+}
+
+export function showTeamAdmin(teamId) {
+  state.activeTeam = teamId;
+  switchView("team-admin");
 }
 
 export function switchToTeams() {
