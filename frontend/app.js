@@ -11,7 +11,7 @@
 import { state } from "./js/state.js";
 import { $, $$, toast } from "./js/utils/dom.js";
 import { handleFile, loadReport, reapplyTeams } from "./js/data/report.js";
-import { loadTeamMappingFromStorage, saveTeamMapping, validateTeamMapping } from "./js/data/teamMapping.js";
+import { loadTeamMappingFromStorage, saveTeamMapping, validateTeamMapping, updateTeamMetaInConfig, addRepoToTeamConfig, removeRepoFromTeamConfig, downloadTeamMappingJson } from "./js/data/teamMapping.js";
 import { generateDemoData } from "./js/data/demo.js";
 import { buildVulnIndex } from "./js/data/vulnIndex.js";
 import { switchView } from "./js/views/router.js";
@@ -20,7 +20,7 @@ import { renderRepoTable, toggleFilter, filterByProject, filterByCheck, setRepoT
 import { showVulnDetail, exportVulnDetailHtml, exportVulnDetailMarkdown } from "./js/details/vulnDetail.js";
 import { showRepoDetail } from "./js/details/repoDetail.js";
 import { closeDetail } from "./js/details/panel.js";
-import { showTeamDetail, switchToTeams, setTeamSort, setTeamFilter, toggleTeamCheckRow, filterVulnsByTeam } from "./js/views/teams.js";
+import { showTeamDetail, switchToTeams, setTeamSort, setTeamFilter, toggleTeamCheckRow, filterVulnsByTeam, filterUnownedRepos, showTeamAdmin } from "./js/views/teams.js";
 import { exportTeamReport } from "./js/utils/download.js";
 
 // ---------------------------------------------------------------------------
@@ -42,7 +42,30 @@ window.setTeamSort = setTeamSort;
 window.setTeamFilter = setTeamFilter;
 window.toggleTeamCheckRow = toggleTeamCheckRow;
 window.filterVulnsByTeam = filterVulnsByTeam;
+window.showTeamAdmin = showTeamAdmin;
 window.exportTeamReport = exportTeamReport;
+window.filterUnownedRepos = filterUnownedRepos;
+window.downloadTeamMapping = () => downloadTeamMappingJson();
+window.saveTeamMeta = function(teamId) {
+  const slackInput   = document.getElementById("admin-slack");
+  const descInput    = document.getElementById("admin-desc");
+  const membersInput = document.getElementById("admin-members");
+  updateTeamMetaInConfig(teamId, {
+    slackChannel: slackInput?.value.trim() ?? "",
+    description:  descInput?.value.trim()  ?? "",
+    members: (membersInput?.value ?? "").split(",").map(m => m.trim()).filter(Boolean),
+  });
+  reapplyTeams();
+  toast("Team-innstillinger lagret!");
+};
+window.addRepoToTeam = function(teamId, project, repo) {
+  addRepoToTeamConfig(teamId, project, repo);
+  reapplyTeams();
+};
+window.removeRepoFromTeam = function(teamId, project, repo) {
+  removeRepoFromTeamConfig(teamId, project, repo);
+  reapplyTeams();
+};
 
 // ---------------------------------------------------------------------------
 // Event-lyttere

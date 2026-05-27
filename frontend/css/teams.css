@@ -523,3 +523,265 @@
   color: var(--text-muted);
   font-size: 0.95rem;
 }
+
+/* ─────────────────────────────────────────────
+   Team-admin — handlingsrad øverst på detaljside
+───────────────────────────────────────────── */
+
+.team-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.btn-export-mapping {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-export-mapping:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-purple);
+  color: var(--text-primary);
+}
+
+.btn-admin-team {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-admin-team:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-purple);
+  color: var(--text-primary);
+}
+
+/* ─────────────────────────────────────────────
+   Team-admin — innstillinger og repo-admin
+───────────────────────────────────────────── */
+
+.team-admin-card {
+  margin-bottom: 1.5rem;
+}
+
+.team-admin-page-header {
+  margin-bottom: 1.5rem;
+}
+
+.team-admin-page-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.team-admin-hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.team-admin-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: end;
+}
+
+.team-admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.team-admin-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.team-admin-field-hint {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.team-admin-field input {
+  padding: 0.4rem 0.7rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  transition: border-color var(--transition);
+}
+
+.team-admin-field input:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+}
+
+.btn-save-meta {
+  padding: 0.42rem 1.1rem;
+  background: var(--accent-purple);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: end;
+  transition: opacity var(--transition);
+}
+
+.btn-save-meta:hover { opacity: 0.85; }
+
+/* ─────────────────────────────────────────────
+   Repo-gruppe (admin-visning)
+───────────────────────────────────────────── */
+
+.repo-group {
+  margin-bottom: 1rem;
+}
+
+.repo-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.35rem;
+}
+
+.repo-group-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-left: 0.25rem;
+}
+
+.repo-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-left: 0.5rem;
+}
+
+.repo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.28rem 0.5rem;
+  border-radius: 5px;
+  font-size: 0.82rem;
+  transition: background var(--transition);
+}
+
+.repo-row:hover {
+  background: var(--bg-card-hover);
+}
+
+.repo-row-name {
+  flex: 1;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.btn-remove-repo {
+  padding: 0.15rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition);
+}
+
+.btn-remove-repo:hover {
+  border-color: var(--severity-critical);
+  color: var(--severity-critical);
+  background: var(--severity-critical-bg);
+}
+
+.btn-add-repo {
+  padding: 0.15rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.btn-add-repo:hover {
+  border-color: var(--success);
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.repo-implicit-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+/* ─────────────────────────────────────────────
+   Søkefelt i ikke-eide repos
+───────────────────────────────────────────── */
+
+.team-unowned-search {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  margin-bottom: 1rem;
+  transition: border-color var(--transition);
+}
+
+.team-unowned-search:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+}
