@@ -10,6 +10,20 @@ import { formatDate } from "../utils/format.js";
 import { renderActiveView } from "../views/router.js";
 import { buildTeamsFromConfig } from "./teamData.js";
 
+/**
+ * Re-anvender gjeldende teamsConfig på allerede lastet rapport.
+ * Brukes når en ny team-mapping lastes opp etter at rapport er lastet inn.
+ */
+export function reapplyTeams() {
+  if (!state.report) return;
+  delete state.report.teams;
+  normalizeTeams(state.report);
+  state.hasTeams = Array.isArray(state.report.teams) && state.report.teams.length > 0;
+  const teamsNavBtn = document.querySelector('[data-view="teams"]');
+  if (teamsNavBtn) teamsNavBtn.classList.toggle("hidden", !state.hasTeams);
+  renderActiveView();
+}
+
 /** Les en JSON-fil og lever den til loadReport hvis den er gyldig. */
 export function handleFile(file) {
   const reader = new FileReader();
