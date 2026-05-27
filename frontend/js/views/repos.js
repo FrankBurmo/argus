@@ -136,12 +136,8 @@ export function filterByProject(project) {
   switchView("vulnerabilities");
 }
 
-/** Drill-down fra sjekk-breakdown — bytter til riktig fane. */
+/** Drill-down fra sjekk-breakdown — åpner sjekk-detaljsiden. */
 export function filterByCheck(checkId) {
-  if (checkId === "dep-vulns") {
-    state.vulnFilters = { severity: [], ecosystem: [], projects: [], fixAvailable: [], team: [] };
-    switchView("vulnerabilities");
-  } else {
-    switchView("repos");
-  }
+  state.activeCheck = checkId;
+  switchView("check-detail");
 }

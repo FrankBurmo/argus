@@ -9,6 +9,7 @@ import { renderSummary } from "./summary.js";
 import { renderExplorer } from "./vulnerabilities.js";
 import { renderRepos } from "./repos.js";
 import { renderTeamList, renderTeamDetail, renderTeamAdmin } from "./teams.js";
+import { renderCheckDetail } from "./checkDetail.js";
 
 /** Bytt aktiv visning og rendre den. */
 export function switchView(view) {
@@ -43,6 +44,10 @@ export function renderActiveView() {
     case "team-admin":
       if (!state.hasTeams || !state.activeTeam) { switchView("teams"); return; }
       renderTeamAdmin(state.activeTeam);
+      break;
+    case "check-detail":
+      if (!state.activeCheck) { switchView("summary"); return; }
+      renderCheckDetail();
       break;
   }
 }

@@ -23,6 +23,8 @@ export const state = {
   teamsConfig: null,
   /** Aktiv team-ID for detaljvisning (null = team-liste). */
   activeTeam: null,
+  /** Aktiv sjekk-ID for sjekk-detaljvisning (null = ingen). */
+  activeCheck: null,
   /** Filtre og sortering i Teams-fanen. */
   teamFilters: {
     sortBy: "score",       // "score" | "name" | "repos"

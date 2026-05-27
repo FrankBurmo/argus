@@ -21,6 +21,7 @@ import { showVulnDetail, exportVulnDetailHtml, exportVulnDetailMarkdown } from "
 import { showRepoDetail } from "./js/details/repoDetail.js";
 import { closeDetail } from "./js/details/panel.js";
 import { showTeamDetail, switchToTeams, setTeamSort, setTeamFilter, toggleTeamCheckRow, filterVulnsByTeam, filterUnownedRepos, showTeamAdmin } from "./js/views/teams.js";
+import { backFromCheckDetail } from "./js/views/checkDetail.js";
 import { exportTeamReport } from "./js/utils/download.js";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,7 @@ window.filterVulnsByTeam = filterVulnsByTeam;
 window.showTeamAdmin = showTeamAdmin;
 window.exportTeamReport = exportTeamReport;
 window.filterUnownedRepos = filterUnownedRepos;
+window.backFromCheckDetail = backFromCheckDetail;
 window.downloadTeamMapping = () => downloadTeamMappingJson();
 window.saveTeamMeta = function(teamId) {
   const slackInput   = document.getElementById("admin-slack");
