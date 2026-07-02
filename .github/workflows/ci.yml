@@ -16,7 +16,7 @@ jobs:
       run:
         working-directory: bitbucket-audit
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
