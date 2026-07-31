@@ -9,7 +9,7 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.0",
     "sql.js": "^1.11.0",
     "semver": "^7.6.3"
   },
