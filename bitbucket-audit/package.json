@@ -11,7 +11,7 @@
     "start:project": "node index.js"
   },
   "dependencies": {
-    "dotenv": "^18.0.8"
+    "dotenv": "^18.0.9"
   },
   "engines": {
     "node": ">=18"
